@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenClaw と Hermes Agent 連携モデル整理</title>
+  <title>OpenClaw と Hermes Agent の連携モデル</title>
   <style>
     :root {
       --bg: #f6f7f9;
@@ -14,7 +14,6 @@
       --blue: #1f6feb;
       --green: #168a5b;
       --amber: #9a5b00;
-      --red: #b42318;
       --code-bg: #eef2f7;
       --shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
     }
@@ -28,7 +27,7 @@
       background: var(--bg);
       color: var(--ink);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.72;
+      line-height: 1.75;
     }
 
     header {
@@ -51,7 +50,7 @@
     }
 
     header p {
-      max-width: 860px;
+      max-width: 900px;
       margin: 0;
       color: #d0d5dd;
       font-size: 17px;
@@ -198,6 +197,48 @@
       margin-bottom: 6px;
     }
 
+    .diagram {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 18px;
+      margin: 18px 0;
+      overflow-x: auto;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(140px, 1fr));
+      gap: 10px;
+      min-width: 760px;
+    }
+
+    .pipebox {
+      border: 2px solid #c7d7fe;
+      background: #eff6ff;
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 112px;
+      position: relative;
+    }
+
+    .pipebox strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #1849a9;
+    }
+
+    .pipebox:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -18px;
+      top: 38%;
+      color: var(--blue);
+      font-weight: 800;
+      font-size: 22px;
+      z-index: 1;
+    }
+
     .flow {
       display: grid;
       gap: 10px;
@@ -229,68 +270,6 @@
       margin-top: 0;
     }
 
-    .diagram {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fbfcfe;
-      padding: 18px;
-      margin: 18px 0;
-      overflow-x: auto;
-    }
-
-    .pipeline {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(140px, 1fr));
-      gap: 10px;
-      align-items: stretch;
-      min-width: 760px;
-    }
-
-    .pipebox {
-      border: 2px solid #c7d7fe;
-      background: #eff6ff;
-      border-radius: 8px;
-      padding: 12px;
-      min-height: 112px;
-      position: relative;
-    }
-
-    .pipebox strong {
-      display: block;
-      margin-bottom: 6px;
-      color: #1849a9;
-    }
-
-    .pipebox:not(:last-child)::after {
-      content: "→";
-      position: absolute;
-      right: -18px;
-      top: 38%;
-      color: var(--blue);
-      font-weight: 800;
-      font-size: 22px;
-      z-index: 1;
-    }
-
-    .simple-map {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-top: 14px;
-    }
-
-    .mapbox {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 14px;
-      background: #ffffff;
-    }
-
-    .mapbox h3 {
-      margin-top: 0;
-      color: #1849a9;
-    }
-
     .term-table td:first-child {
       width: 210px;
       font-weight: 700;
@@ -307,8 +286,7 @@
       }
 
       .grid,
-      .compare,
-      .simple-map {
+      .compare {
         grid-template-columns: 1fr;
       }
 
@@ -321,33 +299,35 @@
 <body>
   <header>
     <div class="inner">
-      <h1>OpenClaw と Hermes Agent 連携モデル整理</h1>
+      <h1>OpenClaw と Hermes Agent の連携モデル</h1>
       <p>
-        当初目指した「Hermes同士の自律連携」、そこで見えたあい路、最終的に落ち着いた「OpenClaw主導のワークフロー制御」を整理するための資料です。
+        OpenClawを進行係、Hermes Agent群を作業者として使い、問い合わせ対応を半自動化するための設計整理です。
+        この記事では、まず最終的に落ち着いたモデルを説明し、その後に当初案とあい路、最後に今後の拡張構想をまとめます。
       </p>
       <nav class="toc" aria-label="目次">
-        <a href="#purpose">目的</a>
+        <a href="#summary">最終モデル</a>
         <a href="#terms">用語</a>
-        <a href="#initial">当初モデル</a>
-        <a href="#bottlenecks">あい路事項</a>
-        <a href="#final">最終モデル</a>
-        <a href="#implementation">実装要素</a>
-        <a href="#operation">運用方針</a>
+        <a href="#current">現在の構成</a>
+        <a href="#implementation">実装</a>
+        <a href="#background">背景思想</a>
+        <a href="#initial">当初案</a>
+        <a href="#bottlenecks">あい路</a>
         <a href="#future">今後</a>
       </nav>
     </div>
   </header>
 
   <main>
-    <section id="purpose">
-      <h2>1. 目的</h2>
+    <section id="summary">
+      <h2>1. 最終的に落ち着いたモデル</h2>
       <p class="lead">
-        OpenClawを人間との問い合わせ窓口にし、Hermes Agent群を調査・回答作成・検証に使うことで、問い合わせ対応を半自動化することが目的です。
+        最終的には、OpenClawがワークフローを制御し、Hermes Agent群へ単一責務の作業を順番に依頼するモデルに落ち着きました。
       </p>
       <p>
-        ざっくり言うと、OpenClawを「受付と進行係」、Hermesを「調べる人・文章を書く人・確認する人」として分担させる構成です。
-        難しい仕組みに見えますが、やっていることは「質問を置く」「調べてもらう」「回答を書いてもらう」「確認する」の4段階です。
+        ざっくり言うと、OpenClawは「受付と進行係」です。人間からの問い合わせを受け取り、質問文を共有フォルダへ置き、Hermesの各agentに順番に作業を依頼します。
+        Hermes側は「調査する人」「回答を書く人」「最後に確認する人」として使います。
       </p>
+
       <div class="diagram" aria-label="最終構成の簡易図">
         <div class="pipeline">
           <div class="pipebox">
@@ -356,11 +336,11 @@
           </div>
           <div class="pipebox">
             <strong>OpenClaw</strong>
-            受付と進行係。誰に何を頼むかを決める。
+            受付と進行係。API呼び出しと進行管理を行う。
           </div>
           <div class="pipebox">
             <strong>Hermes</strong>
-            調査、回答下書き、確認を担当する作業者。
+            調査、回答下書き、検証を担当する。
           </div>
           <div class="pipebox">
             <strong>NFS</strong>
@@ -372,12 +352,43 @@
           </div>
         </div>
       </div>
+
       <p>
-        最初は Hermes の <code>agent-0</code> をディスパッチャーにして、<code>agent-1</code> と <code>agent-2</code> へ作業を割り振る構成を試しました。
-        しかし実験の結果、Hermesにワークフロー制御まで任せるより、OpenClaw側でAPI呼び出しとポーリングを固定実装した方が安定することが分かりました。
+        重要なのは、Hermesに長い段取りをすべて任せないことです。
+        OpenClaw側のスキルがAPI呼び出し、作業完了の確認、成果物ファイルの確認を行います。
+        Hermesには「調査だけ」「回答下書きだけ」「検証だけ」という短い仕事を渡します。
       </p>
+
       <div class="note ok">
-        結論として、OpenClawが制御プレーン、Hermesが作業プレーン、NFS PVが共有作業台、OpenAI互換APIが実行トリガー、というモデルに落ち着きました。
+        この構成では、OpenClawが制御プレーン、Hermesが作業プレーン、NFS PVが共有作業台、OpenAI互換APIが実行トリガーです。
+      </div>
+
+      <h3>最終フロー</h3>
+      <div class="flow">
+        <div class="step">
+          <div class="label">1. 問い合わせ受付</div>
+          <div>OpenClawが問い合わせ本文を受け取り、<code>inbox/&lt;task_id&gt;/task.md</code> に保存します。</div>
+        </div>
+        <div class="step">
+          <div class="label">2. 調査依頼</div>
+          <div>OpenClawスキルが調査用テンプレートを読み、保存先などを埋め込んで agent-1 の <code>/v1/runs</code> に投入します。</div>
+        </div>
+        <div class="step">
+          <div class="label">3. 調査結果確認</div>
+          <div>OpenClawが <code>run_id</code> をポーリングし、<code>research/result.md</code> と <code>sources.json</code> を読み戻します。</div>
+        </div>
+        <div class="step">
+          <div class="label">4. 回答作成依頼</div>
+          <div>OpenClawスキルが回答作成用テンプレートを埋め込み、agent-2 に回答下書きを依頼します。</div>
+        </div>
+        <div class="step">
+          <div class="label">5. 検証依頼</div>
+          <div>OpenClawスキルが検証用テンプレートを埋め込み、agent-0 に最終確認を依頼します。</div>
+        </div>
+        <div class="step">
+          <div class="label">6. 完了</div>
+          <div><code>done/&lt;task_id&gt;/final.md</code> と <code>status.json</code> を保存し、OpenClawが人間へ回答します。</div>
+        </div>
       </div>
     </section>
 
@@ -430,283 +441,83 @@
       </table>
     </section>
 
-    <section id="initial">
-      <h2>3. 当初やりたかった連携モデル</h2>
+    <section id="current">
+      <h2>3. 現在の構成</h2>
       <p>
-        当初のモデルは、テクニカルサポート体制を模した Hermes Agent同士の自律連携でした。
-        OpenClawは問い合わせ者として入力を渡し、Hermes側の <code>agent-0</code> がディスパッチャーとして全体を動かす想定でした。
-      </p>
-      <p>
-        例えるなら、OpenClawが「お客さんからの問い合わせを持ってくる人」で、agent-0が「サポート窓口の班長」です。
-        班長であるagent-0が、調査担当のagent-1と回答作成担当のagent-2に仕事を振り分ける、という発想でした。
+        現在の構成では、OpenClaw側に <code>hermes-support-flow</code> スキルを作り、そこからHermesの各agentを呼び出します。
+        OpenClawスキルは、Hermesに渡すプロンプトをテンプレートから作り、APIを呼び、完了まで待ち、ファイルを確認します。
       </p>
 
       <div class="grid">
         <div class="card">
           <strong>OpenClaw</strong>
-          問い合わせ者。人間から受けた質問をNFSの <code>inbox</code> に置き、agent-0へ処理を依頼する。
-        </div>
-        <div class="card">
-          <strong>agent-0</strong>
-          ディスパッチャー兼検証担当。問い合わせを読み、agent-1/2へAPIで委譲し、最終回答を確認する。
+          人間との対話、問い合わせ受付、API呼び出し、ポーリング、成果物確認を担当します。
         </div>
         <div class="card">
           <strong>agent-1</strong>
-          検索・調査担当。必要な情報を調べ、調査結果をNFSへ保存する。
+          調査担当です。必要な確認事項、コマンド例、原因候補、追加情報を整理します。
         </div>
         <div class="card">
           <strong>agent-2</strong>
-          回答作成担当。調査結果から回答下書きを作る。
+          回答下書き担当です。調査結果をもとに、問い合わせ者へ返す文章を作ります。
+        </div>
+        <div class="card">
+          <strong>agent-0</strong>
+          検証担当です。回答が問い合わせに答えているか確認します。
         </div>
         <div class="card">
           <strong>NFS PV</strong>
-          <code>inbox</code>、<code>research</code>、<code>outbox</code>、<code>done</code> を共有する作業領域。
+          OpenClawとHermesが共有する作業フォルダです。長文や成果物はここで受け渡します。
         </div>
         <div class="card">
-          <strong>Hermes API</strong>
-          agent間の実行指示に使う <code>/v1/runs</code> API。
+          <strong>OpenAI互換API</strong>
+          Hermesへの実行トリガーです。将来、同じようなAPIを持つ別agentへ差し替える余地を残します。
         </div>
       </div>
 
-      <h3>想定フロー</h3>
-      <div class="flow">
-        <div class="step">
-          <div class="label">1. 問い合わせ投入</div>
-          <div>OpenClawが <code>/artifacts/inbox/&lt;task_id&gt;/task.md</code> に不定形の問い合わせ本文を置く。</div>
-        </div>
-        <div class="step">
-          <div class="label">2. ディスパッチ</div>
-          <div>OpenClawが agent-0 に「この inbox を処理して」と短く依頼する。</div>
-        </div>
-        <div class="step">
-          <div class="label">3. 調査</div>
-          <div>agent-0 が agent-1 の <code>/v1/runs</code> を呼び、調査結果を <code>research/</code> に保存させる。</div>
-        </div>
-        <div class="step">
-          <div class="label">4. 回答作成</div>
-          <div>agent-0 が agent-2 の <code>/v1/runs</code> を呼び、回答下書きを <code>outbox/</code> に保存させる。</div>
-        </div>
-        <div class="step">
-          <div class="label">5. 検証</div>
-          <div>agent-0 が回答下書きを検証し、問題なければ <code>done/final.md</code> に保存する。</div>
-        </div>
-      </div>
+      <h3>共有フォルダの構成</h3>
+      <pre><code>host path:
+/home/haomei/k8s-nfs/openclaw-hermes
 
-      <h3>当初モデルの狙い</h3>
-      <ul>
-        <li>OpenClawは人間との対話に集中する。</li>
-        <li>Hermesはタスク処理、調査、回答作成に集中する。</li>
-        <li>NFS上のファイル契約にすることで、将来別製品へ置き換えやすくする。</li>
-        <li>API inputは短くし、長文や成果物はNFSで受け渡す。</li>
-      </ul>
-    </section>
+Hermes pod mount:
+/artifacts</code></pre>
 
-    <section id="bottlenecks">
-      <h2>4. あい路事項</h2>
-      <p>
-        実験により、当初モデルは概念としては自然でしたが、実運用ではいくつかのあい路がありました。
-      </p>
-      <div class="simple-map">
-        <div class="mapbox">
-          <h3>期待していた動き</h3>
-          <p>agent-0が手順書を読み、必要なコマンドを自分で実行し、agent-1とagent-2へ順番に作業を依頼する。</p>
-        </div>
-        <div class="mapbox">
-          <h3>実際に起きたこと</h3>
-          <p>agent-0は手順を理解して「次に実行します」と言うが、そこで止まったり、ファイルをWebとして読もうとしたりした。</p>
-        </div>
-      </div>
-
-      <h3>1. agent-0が計画で止まりやすい</h3>
-      <p>
-        agent-0は問い合わせ本文と手順書を読み、次に実行すべきコマンドを説明するところまでは安定していました。
-        しかし「このコマンドを実行します」と言ったまま、実際のterminal実行に進まないことがありました。
-      </p>
-      <p>
-        人間なら「では実行します」と言ったあとに手を動かしますが、LLMは文章で計画を書いた時点で満足してしまうことがあります。
-        今回はこの性質が、連携処理の途中停止につながりました。
-      </p>
-      <pre><code>実行するアクション:
-/artifacts/bin/hermes-run agent-1 &lt;task_id&gt; research
-
-このコマンドを実行し、結果を待ちます。</code></pre>
-      <p>
-        これは、ワークフロー制御をLLMの自律実行に任せると、計画と実行の境界で止まる可能性があることを示しています。
-      </p>
-
-      <h3>2. ローカルファイルをWeb取得しようとする</h3>
-      <p>
-        <code>/artifacts/templates/research-worker.md</code> のようなローカルファイルを、Hermesが <code>file:///artifacts/...</code> に変換し、
-        <code>web_extract</code> で読もうとしてブロックされることがありました。
-      </p>
-      <p>
-        これは「同じファイルを読む」でも、ローカルファイルとして読むのか、Webページとして取りに行くのかをAIが取り違えた例です。
-        <code>/artifacts</code> は共有フォルダなので、Webアクセスではなく通常のファイル読み取りで扱う必要があります。
-      </p>
-      <pre><code>Blocked: URL targets a private or internal network address
-url: file:///artifacts/templates/research-worker.md</code></pre>
-      <p>
-        対策として、Hermes workerにNFS上のテンプレートを読ませるのではなく、OpenClawスキルがテンプレートを読み、API inputへ埋め込む方式に変更しました。
-      </p>
-
-      <h3>3. terminal実行環境にAPIキーが渡らない</h3>
-      <p>
-        Hermes本体プロセスには <code>API_SERVER_KEY</code> があり、Pod間API通信も成功していました。
-        しかし Hermes の terminal tool 実行環境では <code>API_SERVER_KEY</code> が見えず、agent-1 API呼び出しが401になることがありました。
-      </p>
-      <p>
-        これは「建物の受付には鍵があるが、作業部屋には鍵が渡っていない」ような状態です。
-        Hermes本体は鍵を持っていても、コマンドを実行する別環境に鍵が渡っていなければ、API呼び出しは認証に失敗します。
-      </p>
-      <pre><code>HTTP 401
-{"error":{"message":"Invalid API key","code":"invalid_api_key"}}</code></pre>
-      <p>
-        対策として、Hermesの設定に <code>terminal.env_passthrough</code> を追加しました。
-      </p>
-      <pre><code>terminal:
-  env_passthrough:
-  - API_SERVER_KEY</code></pre>
-
-      <h3>4. 自己申告と成果物がズレる</h3>
-      <p>
-        agentが「保存しました」と返しても、実際にはNFS上にファイルが存在しないことがありました。
-        このため、成果物は必ずOpenClaw側で読み戻して確認する必要があります。
-      </p>
-      <p>
-        ここは重要です。AIの返答は「自己申告」であり、実際にファイルがあるかどうかとは別です。
-        そのため最終モデルでは、OpenClaw側のスクリプトがファイルの存在と中身を確認します。
-      </p>
-
-      <div class="note warn">
-        これらのあい路は、Hermesが悪いというより、LLMに長い実行制御を任せた時の揺れです。
-        繰り返しで改善する余地はありますが、基幹フローは固定スクリプトに寄せる方が安定します。
-      </div>
-    </section>
-
-    <section id="final">
-      <h2>5. 最終的に落ち着いた連携モデル</h2>
-      <p>
-        最終モデルでは、OpenClawに <code>hermes-support-flow</code> スキルを作成し、OpenClawがワークフロー制御を担当します。
-        Hermes agentは、それぞれ単一責務のworkerとして扱います。
-      </p>
-      <p>
-        つまり、OpenClawが「進行表を持っている係」になりました。
-        Hermesには長い段取りを考えさせず、「調査だけ」「回答下書きだけ」「検証だけ」という短い仕事を順番に依頼します。
-      </p>
-
-      <div class="compare">
-        <div class="card">
-          <h3>当初モデル</h3>
-          <pre><code>OpenClaw
-  -> agent-0
-      -> agent-1
-      -> agent-2
-      -> final</code></pre>
-          <p>agent-0がディスパッチ、API呼び出し、ポーリング、検証まで担当する。</p>
-        </div>
-        <div class="card">
-          <h3>最終モデル</h3>
-          <pre><code>OpenClaw Skill
-  -> agent-1
-  -> agent-2
-  -> agent-0
-  -> final</code></pre>
-          <p>OpenClaw側の固定スクリプトがAPI呼び出し、ポーリング、成果物確認を担当する。</p>
-        </div>
-      </div>
-
-      <h3>最終フロー</h3>
-      <div class="diagram" aria-label="最終フローの図解">
-        <div class="pipeline">
-          <div class="pipebox">
-            <strong>1. 受付</strong>
-            OpenClawが質問文を共有フォルダへ保存。
-          </div>
-          <div class="pipebox">
-            <strong>2. 調査</strong>
-            agent-1へ調査だけを依頼。
-          </div>
-          <div class="pipebox">
-            <strong>3. 下書き</strong>
-            agent-2へ回答作成だけを依頼。
-          </div>
-          <div class="pipebox">
-            <strong>4. 検証</strong>
-            agent-0へ回答確認だけを依頼。
-          </div>
-          <div class="pipebox">
-            <strong>5. 返答</strong>
-            OpenClawが最終回答を人間へ返す。
-          </div>
-        </div>
-      </div>
-      <div class="flow">
-        <div class="step">
-          <div class="label">1. OpenClaw</div>
-          <div>問い合わせ本文を受け取り、NFSの <code>inbox/&lt;task_id&gt;/task.md</code> に保存する。</div>
-        </div>
-        <div class="step">
-          <div class="label">2. OpenClaw Skill</div>
-          <div><code>research-prompt.md</code> を読み、<code>{{task_id}}</code> や保存先を埋め込んで agent-1 へ <code>/v1/runs</code> 投入する。</div>
-        </div>
-        <div class="step">
-          <div class="label">3. agent-1</div>
-          <div>調査結果を <code>research/&lt;task_id&gt;/result.md</code>、参照情報を <code>sources.json</code> に保存する。</div>
-        </div>
-        <div class="step">
-          <div class="label">4. OpenClaw Skill</div>
-          <div>agent-1の <code>run_id</code> をポーリングし、成果物を読み戻して確認する。</div>
-        </div>
-        <div class="step">
-          <div class="label">5. agent-2</div>
-          <div>埋め込み済みの <code>writer-prompt.md</code> を受け取り、<code>outbox/&lt;task_id&gt;/draft.md</code> に回答下書きを保存する。</div>
-        </div>
-        <div class="step">
-          <div class="label">6. agent-0</div>
-          <div>埋め込み済みの <code>verify-prompt.md</code> を受け取り、回答下書きを検証し、<code>done/&lt;task_id&gt;/final.md</code> を作る。</div>
-        </div>
-        <div class="step">
-          <div class="label">7. OpenClaw Skill</div>
-          <div><code>done/status.json</code> にrun_idと成果物パスを書き、OpenClawが人間へ結果を返す。</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="implementation">
-      <h2>6. 実装要素</h2>
-      <h3>OpenClawスキル</h3>
-      <p>
-        スキルは <code>/home/haomei/.openclaw/workspace/skills/hermes-support-flow</code> に配置しています。
-        <code>SKILL.md</code> はOpenClaw向けの薄い説明にし、Hermesへ渡す実プロンプトは <code>templates/</code> に分離しました。
-      </p>
-      <pre><code>/home/haomei/.openclaw/workspace/skills/hermes-support-flow/
-├── SKILL.md
-├── scripts/hermes_support_flow.py
-└── templates/
-    ├── research-prompt.md
-    ├── writer-prompt.md
-    ├── verify-prompt.md
-    └── task.md</code></pre>
-
-      <h3>スクリプトの役割</h3>
-      <p>
-        スクリプトは、この連携の「確実に実行する部分」です。
-        AIに任せると揺れやすいAPI呼び出し、待ち合わせ、ファイル確認を、普通のプログラムとして決め打ちで行います。
-      </p>
-      <ul>
-        <li>NFS上に <code>inbox/&lt;task_id&gt;/task.md</code> を作る。</li>
-        <li>テンプレート内の <code>{{task_id}}</code>、<code>{{task_path}}</code>、<code>{{research_path}}</code> などを埋める。</li>
-        <li>Hermes agentの <code>/v1/runs</code> に投入する。</li>
-        <li><code>/v1/runs/{run_id}</code> をポーリングする。</li>
-        <li>成果物が存在しない場合はAPI outputをフォールバック保存する。</li>
-        <li>完了時に <code>done/&lt;task_id&gt;/status.json</code> を作る。</li>
-      </ul>
+      <table>
+        <thead>
+          <tr>
+            <th>パス</th>
+            <th>役割</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>inbox/&lt;task_id&gt;/task.md</code></td>
+            <td>OpenClawが置く問い合わせ本文</td>
+          </tr>
+          <tr>
+            <td><code>research/&lt;task_id&gt;/result.md</code></td>
+            <td>agent-1の調査結果</td>
+          </tr>
+          <tr>
+            <td><code>research/&lt;task_id&gt;/sources.json</code></td>
+            <td>参照情報</td>
+          </tr>
+          <tr>
+            <td><code>outbox/&lt;task_id&gt;/draft.md</code></td>
+            <td>agent-2の回答下書き</td>
+          </tr>
+          <tr>
+            <td><code>done/&lt;task_id&gt;/final.md</code></td>
+            <td>最終回答</td>
+          </tr>
+          <tr>
+            <td><code>done/&lt;task_id&gt;/status.json</code></td>
+            <td>完了状態、run_id、成果物パス</td>
+          </tr>
+        </tbody>
+      </table>
 
       <h3>Hermes API</h3>
-      <p>
-        Hermes APIは、Hermesに作業を頼むための入口です。
-        <code>agent-1</code>、<code>agent-2</code>、<code>agent-0</code> それぞれに別の入口を用意し、OpenClawスキルが順番に呼び出します。
-      </p>
       <table>
         <thead>
           <tr>
@@ -735,50 +546,197 @@ url: file:///artifacts/templates/research-worker.md</code></pre>
       </table>
       <p>
         NodePortなので、通常は <code>10.0.1.10</code> から <code>10.0.1.13</code> のどのNode IPでも同じポートでアクセスできます。
-        スクリプトのデフォルトは <code>10.0.1.10</code> です。
+        スキルのデフォルトは <code>10.0.1.10</code> です。
       </p>
-
-      <h3>NFS PV</h3>
-      <p>
-        NFS PVは共有フォルダです。OpenClaw側ではホストの通常ディレクトリとして見え、Hermes側では <code>/artifacts</code> として見えます。
-        これにより、長文の問い合わせや回答ファイルをAPI本文に詰め込まずに受け渡しできます。
-      </p>
-      <pre><code>host path:
-/home/haomei/k8s-nfs/openclaw-hermes
-
-Hermes mount:
-/artifacts</code></pre>
     </section>
 
-    <section id="operation">
-      <h2>7. 運用方針</h2>
-      <h3>基本方針</h3>
+    <section id="implementation">
+      <h2>4. 実装</h2>
+      <p>
+        OpenClaw側のスキルは、Hermesへ渡す指示をテンプレートとして持っています。
+        HermesにNFS上のテンプレートを読ませるのではなく、OpenClawスクリプトがテンプレートを読み、<code>{{task_id}}</code> や保存先パスを埋め込んでAPI inputに入れます。
+      </p>
+
+      <pre><code>/home/haomei/.openclaw/workspace/skills/hermes-support-flow/
+├── SKILL.md
+├── scripts/hermes_support_flow.py
+└── templates/
+    ├── research-prompt.md
+    ├── writer-prompt.md
+    ├── verify-prompt.md
+    └── task.md</code></pre>
+
+      <h3>スクリプトが担当すること</h3>
       <ul>
-        <li>Hermesに複数ステップの実行制御を任せない。</li>
-        <li>OpenClaw側のスキルでAPI呼び出し、ポーリング、成果物確認を固定化する。</li>
-        <li>Hermesへ渡すプロンプトはスキル内テンプレートから埋め込む。</li>
-        <li>NFS上のファイルを成果物の正とする。</li>
-        <li>agentの「保存した」という自己申告は信用しすぎず、必ずファイルを確認する。</li>
+        <li>NFS上に <code>inbox/&lt;task_id&gt;/task.md</code> を作る。</li>
+        <li>調査、回答作成、検証のテンプレートを読み込む。</li>
+        <li>テンプレート内の <code>{{task_id}}</code>、<code>{{task_path}}</code>、<code>{{research_path}}</code> などを埋める。</li>
+        <li>Hermes agentの <code>/v1/runs</code> に投入する。</li>
+        <li><code>/v1/runs/{run_id}</code> をポーリングする。</li>
+        <li>成果物ファイルを読み戻して確認する。</li>
+        <li>完了時に <code>done/&lt;task_id&gt;/status.json</code> を作る。</li>
       </ul>
 
-      <h3>問い合わせ処理の実行例</h3>
+      <h3>実行例</h3>
       <pre><code>python3 /home/haomei/.openclaw/workspace/skills/hermes-support-flow/scripts/hermes_support_flow.py \
   --input /path/to/question.txt</code></pre>
 
-      <h3>APIキー</h3>
+      <h3>直接テキストを渡す例</h3>
+      <pre><code>python3 /home/haomei/.openclaw/workspace/skills/hermes-support-flow/scripts/hermes_support_flow.py \
+  --text "KubernetesのPodがCrashLoopBackOffになる原因を切り分けたい"</code></pre>
+    </section>
+
+    <section id="background">
+      <h2>5. 背景にある思想</h2>
       <p>
-        OpenClawスクリプトは <code>HERMES_API_KEY</code>、<code>API_SERVER_KEY</code>、<code>~/.openclaw/hermes-api-key</code>、Kubernetes Secret の順にAPIキーを探します。
-        キー値はログや回答に出さない運用にします。
+        この設計の根底には、KubernetesやOSSに近い価値観があります。
+        つまり、特定の製品に依存しすぎず、共通のインターフェースと明確な責務分担によって、構成要素を入れ替えられるようにしておくという考え方です。
+      </p>
+      <p>
+        Kubernetesでは、コンテナランタイム、CNI、CSI、Ingress Controller、Operator、監視基盤などを、標準的なAPIや契約に沿って組み合わせます。
+        どれか1つの実装に閉じず、要件や時代に合わせて差し替えられることが、Kubernetesエコシステムの強さです。
+        今回のOpenClawとHermesの連携でも、それと同じ発想をAIエージェントの世界に持ち込みたい、という意図があります。
       </p>
 
-      <h3>今後の改善候補</h3>
+      <h3>ベンダーロックインを避けるための契約</h3>
+      <p>
+        重要なのは、どの製品を使うかではなく、次の契約を守れるかです。
+      </p>
       <ul>
-        <li>Hermes APIキーを専用の低権限トークンに分ける。</li>
-        <li>OpenClawスキルのログ保存先を決める。</li>
-        <li>失敗時の再試行回数とタイムアウトを設定化する。</li>
-        <li>問い合わせ種別ごとにテンプレートを分ける。</li>
-        <li>最終回答の品質チェックをルール化する。</li>
+        <li>問い合わせ本文をファイルとして受け取れること。</li>
+        <li>API経由で作業を開始できること。</li>
+        <li>作業状態を確認できること。</li>
+        <li>調査結果、回答下書き、最終回答を決められた形式で保存できること。</li>
+        <li>人間が必要に応じてファイルを確認・編集できること。</li>
       </ul>
+
+      <h3>OpenClawもHermesも置き換え可能にする</h3>
+      <p>
+        Hermes側は、OpenAI API互換の入口とファイル入出力契約を守れるagentなら将来置き換えられます。
+        同じように、OpenClaw側も、スキルを作成でき、外部APIを呼び出し、ファイルを読み書きできるAIエージェントであれば置き換え可能です。
+      </p>
+      <p>
+        これは特定製品同士を強く結合するための構成ではありません。
+        進行係、調査担当、回答作成担当、検証担当という役割を、共通のAPIと共有ファイル契約でつなぐ、AIエージェントのエコシステム的な設計です。
+      </p>
+
+      <h3>Hermes kanbanを中核にしなかった理由</h3>
+      <p>
+        Hermesにはkanbanによるタスク連携機能があります。
+        しかし今回は、あえてkanbanを中核には置きませんでした。
+        理由は、kanbanを前提にするとワークフロー全体がHermes固有の機能に強く結びつき、将来別のAIエージェントへ置き換えにくくなるためです。
+      </p>
+      <p>
+        便利な製品固有機能を使うこと自体は悪くありません。
+        ただし今回の狙いは、OpenClaw、Hermes、将来の別エージェントを、共通のAPIと共有ファイル契約で接続することでした。
+        そのため、タスク管理の中核はkanbanではなく、<code>inbox</code>、<code>research</code>、<code>outbox</code>、<code>done</code> というファイル上の状態遷移に寄せました。
+      </p>
+    </section>
+
+    <section id="initial">
+      <h2>6. 当初やろうとしていたモデル</h2>
+      <p>
+        当初のモデルは、テクニカルサポート体制を模した Hermes Agent同士の自律連携でした。
+        OpenClawは問い合わせ者として入力を渡し、Hermes側の <code>agent-0</code> がディスパッチャーとして全体を動かす想定でした。
+      </p>
+      <p>
+        例えるなら、OpenClawが「お客さんからの問い合わせを持ってくる人」で、agent-0が「サポート窓口の班長」です。
+        班長であるagent-0が、調査担当のagent-1と回答作成担当のagent-2に仕事を振り分ける、という発想でした。
+      </p>
+
+      <div class="compare">
+        <div class="card">
+          <h3>当初モデル</h3>
+          <pre><code>OpenClaw
+  -> agent-0
+      -> agent-1
+      -> agent-2
+      -> final</code></pre>
+          <p>agent-0がディスパッチ、API呼び出し、ポーリング、検証まで担当する。</p>
+        </div>
+        <div class="card">
+          <h3>最終モデル</h3>
+          <pre><code>OpenClaw Skill
+  -> agent-1
+  -> agent-2
+  -> agent-0
+  -> final</code></pre>
+          <p>OpenClaw側の固定スクリプトがAPI呼び出し、ポーリング、成果物確認を担当する。</p>
+        </div>
+      </div>
+
+      <h3>当初モデルの狙い</h3>
+      <ul>
+        <li>OpenClawは人間との対話に集中する。</li>
+        <li>Hermesはタスク処理、調査、回答作成に集中する。</li>
+        <li>NFS上のファイル契約にすることで、将来別製品へ置き換えやすくする。</li>
+        <li>API inputは短くし、長文や成果物はNFSで受け渡す。</li>
+        <li>製品固有の機能ではなく、APIとファイルという単純な契約を中心に据える。</li>
+      </ul>
+    </section>
+
+    <section id="bottlenecks">
+      <h2>7. あい路事項</h2>
+      <p>
+        実験により、当初モデルは概念としては自然でしたが、実運用ではいくつかのあい路がありました。
+      </p>
+
+      <h3>1. agent-0が計画で止まりやすい</h3>
+      <p>
+        agent-0は問い合わせ本文と手順書を読み、次に実行すべきコマンドを説明するところまでは安定していました。
+        しかし「このコマンドを実行します」と言ったまま、実際のterminal実行に進まないことがありました。
+      </p>
+      <pre><code>実行するアクション:
+/artifacts/bin/hermes-run agent-1 &lt;task_id&gt; research
+
+このコマンドを実行し、結果を待ちます。</code></pre>
+      <p>
+        人間なら「では実行します」と言ったあとに手を動かしますが、LLMは文章で計画を書いた時点で満足してしまうことがあります。
+        今回はこの性質が、連携処理の途中停止につながりました。
+      </p>
+
+      <h3>2. ローカルファイルをWeb取得しようとする</h3>
+      <p>
+        <code>/artifacts/templates/research-worker.md</code> のようなローカルファイルを、Hermesが <code>file:///artifacts/...</code> に変換し、
+        <code>web_extract</code> で読もうとしてブロックされることがありました。
+      </p>
+      <pre><code>Blocked: URL targets a private or internal network address
+url: file:///artifacts/templates/research-worker.md</code></pre>
+      <p>
+        対策として、Hermes workerにNFS上のテンプレートを読ませるのではなく、OpenClawスキルがテンプレートを読み、API inputへ埋め込む方式に変更しました。
+      </p>
+
+      <h3>3. terminal実行環境にAPIキーが渡らない</h3>
+      <p>
+        Hermes本体プロセスには <code>API_SERVER_KEY</code> があり、Pod間API通信も成功していました。
+        しかし Hermes の terminal tool 実行環境では <code>API_SERVER_KEY</code> が見えず、agent-1 API呼び出しが401になることがありました。
+      </p>
+      <pre><code>HTTP 401
+{"error":{"message":"Invalid API key","code":"invalid_api_key"}}</code></pre>
+      <p>
+        対策として、Hermesの設定に <code>terminal.env_passthrough</code> を追加しました。
+      </p>
+      <pre><code>terminal:
+  env_passthrough:
+  - API_SERVER_KEY</code></pre>
+
+      <h3>4. 自己申告と成果物がズレる</h3>
+      <p>
+        agentが「保存しました」と返しても、実際にはNFS上にファイルが存在しないことがありました。
+        AIの返答は「自己申告」であり、実際にファイルがあるかどうかとは別です。
+        そのため最終モデルでは、OpenClaw側のスクリプトがファイルの存在と中身を確認します。
+      </p>
+
+      <h3>5. 製品固有機能を中核にすると移植性が下がる</h3>
+      <p>
+        Hermes kanbanのような製品固有機能を使えば、単一製品内では自然に連携できる可能性があります。
+        しかし、それを中核にすると「Hermesだから動く」構成になり、OpenAI API互換の別エージェントや、別のスキル型エージェントへ置き換えにくくなります。
+      </p>
+
+      <div class="note warn">
+        これらのあい路は、Hermesが悪いというより、LLMに長い実行制御を任せた時の揺れです。
+        繰り返しで改善する余地はありますが、基幹フローは固定スクリプトに寄せる方が安定します。
+      </div>
     </section>
 
     <section id="future">
@@ -795,8 +753,7 @@ Hermes mount:
       <h3>RAG用ドキュメントの活用</h3>
       <p>
         RAGは、AIが回答する前に関連文書を検索し、その内容を根拠として回答に使う仕組みです。
-        今回の構成に入れる場合、OpenClawスキルまたは調査担当agentの前段で、社内文書から関連情報を検索し、
-        調査プロンプトへ「参考資料」として渡す形が考えられます。
+        OpenClawスキルまたは調査担当agentの前段で、社内文書から関連情報を検索し、調査プロンプトへ「参考資料」として渡す形が考えられます。
       </p>
       <div class="diagram" aria-label="RAG拡張の簡易図">
         <div class="pipeline">
@@ -822,15 +779,11 @@ Hermes mount:
           </div>
         </div>
       </div>
-      <p>
-        社内文書を使う場合は、回答に「どの文書を根拠にしたか」を残すことが重要です。
-        参照元が曖昧だと、もっともらしいが根拠の薄い回答になりやすいためです。
-      </p>
 
       <h3>分野別エージェントセット</h3>
       <p>
         もう一つの検証テーマは、4エージェント構成を分野別に持つことです。
-        たとえば Kubernetes、ネットワーク、業務アプリ、社内システム、セキュリティなどの領域ごとに、
+        Kubernetes、ネットワーク、業務アプリ、社内システム、セキュリティなどの領域ごとに、
         専用の調査・回答・検証テンプレートを持つ構成が考えられます。
       </p>
       <table>
@@ -865,23 +818,25 @@ Hermes mount:
         </tbody>
       </table>
 
-      <h3>複数セット連携のイメージ</h3>
+      <h3>AIエージェントのエコシステムとしての狙い</h3>
       <p>
-        分野別に4エージェントセットを持つ場合、OpenClawスキルが最初に問い合わせ内容を分類し、
-        適切な分野セットへ処理を渡します。
-        1つの問い合わせが複数分野にまたがる場合は、複数セットへ調査を依頼し、最後に統合回答を作ることも検証できます。
+        この構成の本質は、OpenClawとHermesという2製品の固定連携ではありません。
+        「進行係」「調査担当」「回答作成担当」「検証担当」という役割を、複数のAIエージェントが共通のAPIとファイル契約で受け渡すことにあります。
       </p>
-      <pre><code>OpenClaw
-  -> 問い合わせ分類
-      -> Kubernetes向けセット
-      -> ネットワーク向けセット
-      -> 業務アプリ向けセット
-  -> 調査結果を統合
-  -> 最終回答</code></pre>
       <p>
-        この方式を取ると、1つの巨大な汎用agentにすべてを任せるより、分野ごとの知識、テンプレート、検証観点を分けられます。
-        将来的に製品を入れ替える場合も、分野別の入出力契約を維持しやすくなります。
+        進行係はOpenClawでなくても、スキルやワークフローを作れるエージェントなら置き換えられます。
+        作業者もHermesでなくても、OpenAI API互換の入口を持ち、指定されたファイルを読み書きできるエージェントなら置き換えられます。
+        このように、AIエージェント同士を疎結合にして、用途に応じて組み合わせを変えられるエコシステムを目指しています。
       </p>
+      <p>
+        これはKubernetesやOSSの世界で重視されてきた「一社の製品に閉じない」「標準的な接続面を残す」「実装を選べるようにする」という思想に近いものです。
+        特定の時点で最も使いやすい製品を選びつつ、将来もっと良い実装が出てきた時に、全体を作り直さずに差し替えられる余地を残します。
+      </p>
+      <pre><code>進行係エージェント
+  -> 調査エージェント
+  -> 回答作成エージェント
+  -> 検証エージェント
+  -> 共有ファイル契約で成果物を受け渡す</code></pre>
 
       <div class="note">
         まずは現在の1セット構成を安定させ、その後に「Kubernetes向け」など対象を絞った分野別セットを1つ追加して検証するのが現実的です。
