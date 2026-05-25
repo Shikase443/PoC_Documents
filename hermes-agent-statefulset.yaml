@@ -1,0 +1,364 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hermes
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hermes-local-static
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+allowVolumeExpansion: false
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: openclaw-hermes-nfs-pv
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: openclaw-hermes-static
+  mountOptions:
+    - nfsvers=4.1
+  nfs:
+    server: 10.0.1.1
+    path: /home/haomei/k8s-nfs/openclaw-hermes
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openclaw-hermes-data
+  namespace: hermes
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: openclaw-hermes-static
+  volumeName: openclaw-hermes-nfs-pv
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hermes-data-0
+spec:
+  capacity:
+    storage: 20Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: hermes-local-static
+  claimRef:
+    namespace: hermes
+    name: hermes-data-hermes-agent-0
+  local:
+    path: /var/lib/hermes-agent/hermes-agent-0
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - pi4k8s-node01
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hermes-data-1
+spec:
+  capacity:
+    storage: 20Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: hermes-local-static
+  claimRef:
+    namespace: hermes
+    name: hermes-data-hermes-agent-1
+  local:
+    path: /var/lib/hermes-agent/hermes-agent-1
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - pi4k8s-node02
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hermes-data-2
+spec:
+  capacity:
+    storage: 20Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: hermes-local-static
+  claimRef:
+    namespace: hermes
+    name: hermes-data-hermes-agent-2
+  local:
+    path: /var/lib/hermes-agent/hermes-agent-2
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - pi4k8s-node03
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent
+  namespace: hermes
+spec:
+  clusterIP: None
+  selector:
+    app: hermes-agent
+  ports:
+    - name: dashboard
+      port: 9119
+      targetPort: dashboard
+    - name: api
+      port: 8642
+      targetPort: api
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hermes-agent
+  namespace: hermes
+spec:
+  serviceName: hermes-agent
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: hermes-agent
+  template:
+    metadata:
+      labels:
+        app: hermes-agent
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: hermes-agent
+              topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: seed-hermes-data
+          image: docker.io/nousresearch/hermes-agent:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -lc
+          args:
+            - |
+              set -eu
+              if [ ! -f /opt/data/config.yaml ] && [ -f /artifacts/config.yaml ]; then
+                cp /artifacts/config.yaml /opt/data/config.yaml
+              fi
+              if [ ! -d /opt/data/python ] && [ -d /artifacts/python ]; then
+                cp -a /artifacts/python /opt/data/python
+              fi
+              if [ ! -f /opt/data/.no-bundled-skills ]; then
+                printf '%s\n' 'Bundled skill seeding is disabled for this lightweight Hermes profile.' > /opt/data/.no-bundled-skills
+              fi
+              mkdir -p /opt/data/skills
+              if [ ! -f /opt/data/skills/.bundled_manifest ] && [ -f /artifacts/.bundled_manifest.no-skills ]; then
+                cp /artifacts/.bundled_manifest.no-skills /opt/data/skills/.bundled_manifest
+              fi
+              mkdir -p /artifacts/inbox /artifacts/running /artifacts/done /artifacts/failed /artifacts/archive /opt/data/workspace
+          volumeMounts:
+            - name: hermes-data
+              mountPath: /opt/data
+            - name: hermes-artifacts
+              mountPath: /artifacts
+      containers:
+        - name: hermes-agent
+          image: docker.io/nousresearch/hermes-agent:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - gateway
+            - run
+            - --replace
+            - --accept-hooks
+          env:
+            - name: HERMES_HOME
+              value: /opt/data
+            - name: HERMES_UID
+              value: "1000"
+            - name: HERMES_GID
+              value: "1000"
+            - name: HERMES_DASHBOARD
+              value: "1"
+            - name: HERMES_DASHBOARD_HOST
+              value: 0.0.0.0
+            - name: HERMES_DASHBOARD_PORT
+              value: "9119"
+            - name: HERMES_DASHBOARD_TUI
+              value: "1"
+            - name: HERMES_TUI_DIR
+              value: /opt/hermes/ui-tui
+            - name: PYTHONPATH
+              value: /opt/data/python
+            - name: BRAVE_SEARCH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-web-search
+                  key: brave-search-api-key
+                  optional: true
+            - name: HERMES_PLUGINS_DEBUG
+              value: "0"
+            - name: API_SERVER_ENABLED
+              value: "true"
+            - name: API_SERVER_HOST
+              value: 0.0.0.0
+            - name: API_SERVER_PORT
+              value: "8642"
+            - name: API_SERVER_MODEL_NAME
+              value: hermes-agent
+            - name: API_SERVER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-api-server
+                  key: API_SERVER_KEY
+                  optional: true
+          ports:
+            - name: dashboard
+              containerPort: 9119
+            - name: api
+              containerPort: 8642
+          volumeMounts:
+            - name: hermes-data
+              mountPath: /opt/data
+            - name: hermes-artifacts
+              mountPath: /artifacts
+      volumes:
+        - name: hermes-artifacts
+          persistentVolumeClaim:
+            claimName: openclaw-hermes-data
+  volumeClaimTemplates:
+    - metadata:
+        name: hermes-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: hermes-local-static
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent-0-api
+  namespace: hermes
+spec:
+  type: NodePort
+  selector:
+    statefulset.kubernetes.io/pod-name: hermes-agent-0
+  ports:
+    - name: api
+      port: 8642
+      targetPort: api
+      nodePort: 30242
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent-1-api
+  namespace: hermes
+spec:
+  type: NodePort
+  selector:
+    statefulset.kubernetes.io/pod-name: hermes-agent-1
+  ports:
+    - name: api
+      port: 8642
+      targetPort: api
+      nodePort: 30243
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent-2-api
+  namespace: hermes
+spec:
+  type: NodePort
+  selector:
+    statefulset.kubernetes.io/pod-name: hermes-agent-2
+  ports:
+    - name: api
+      port: 8642
+      targetPort: api
+      nodePort: 30244
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent-0-dashboard
+  namespace: hermes
+spec:
+  type: NodePort
+  selector:
+    statefulset.kubernetes.io/pod-name: hermes-agent-0
+  ports:
+    - name: dashboard
+      port: 9119
+      targetPort: dashboard
+      nodePort: 30119
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent-1-dashboard
+  namespace: hermes
+spec:
+  type: NodePort
+  selector:
+    statefulset.kubernetes.io/pod-name: hermes-agent-1
+  ports:
+    - name: dashboard
+      port: 9119
+      targetPort: dashboard
+      nodePort: 30120
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent-2-dashboard
+  namespace: hermes
+spec:
+  type: NodePort
+  selector:
+    statefulset.kubernetes.io/pod-name: hermes-agent-2
+  ports:
+    - name: dashboard
+      port: 9119
+      targetPort: dashboard
+      nodePort: 30121
