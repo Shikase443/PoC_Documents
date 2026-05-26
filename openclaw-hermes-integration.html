@@ -275,6 +275,39 @@
       font-weight: 700;
     }
 
+    figure {
+      margin: 18px 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      padding: 12px;
+    }
+
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    figcaption {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    .manifest-frame {
+      width: 100%;
+      height: 520px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      margin: 16px 0;
+      overflow: auto;
+    }
+
     @media (max-width: 820px) {
       header .inner,
       main {
@@ -548,6 +581,21 @@ Hermes pod mount:
         NodePortなので、通常は <code>10.0.1.10</code> から <code>10.0.1.13</code> のどのNode IPでも同じポートでアクセスできます。
         スキルのデフォルトは <code>10.0.1.10</code> です。
       </p>
+
+      <h3>Hermesのデプロイに使用したマニフェスト</h3>
+      <p>
+        この構成は、Hermes Agentを3台のStatefulSetとして起動し、各Podに個別のローカルPVと、OpenClawと共有するNFS PVをマウントする形で作っています。
+        共有NFSは <code>/artifacts</code> としてHermes側に見せ、OpenClaw側のスキルが同じ領域に <code>inbox</code> や <code>done</code> を作ります。
+        下は実際にデプロイへ使ったマニフェストです。
+      </p>
+      <iframe
+        class="manifest-frame"
+        src="./hermes-agent-statefulset.yaml"
+        title="Hermes Agent StatefulSet manifest"></iframe>
+      <p>
+        ポイントは、Hermes固有の内部状態は <code>/opt/data</code> に分け、OpenClawとの受け渡しだけを <code>/artifacts</code> に集約していることです。
+        これにより、agentの入れ替えや再作成があっても、問い合わせ本文や成果物の置き場所は変えずに済みます。
+      </p>
     </section>
 
     <section id="implementation">
@@ -584,6 +632,18 @@ Hermes pod mount:
       <h3>直接テキストを渡す例</h3>
       <pre><code>python3 /home/haomei/.openclaw/workspace/skills/hermes-support-flow/scripts/hermes_support_flow.py \
   --text "KubernetesのPodがCrashLoopBackOffになる原因を切り分けたい"</code></pre>
+
+      <h3>実際のHermesセッションログ</h3>
+      <p>
+        次の画像は、OpenClawスキルからHermes agentへタスクを投入し、Hermes側でセッションが作成されて処理された際のログです。
+        最終モデルでは、agent同士に長い実行制御を任せるのではなく、OpenClaw側のスクリプトが各agentを順番に呼び出すため、このように各agentの処理単位をセッションログとして確認できます。
+      </p>
+      <figure>
+        <img src="./hermes-agents-session-log.png" alt="OpenClawから投入されたHermes Agentの成功時セッションログ画面">
+        <figcaption>
+          OpenClawからHermes Agentへタスクを投入し、Hermes側で処理されたセッションログ。調査、回答作成、検証の各処理が独立した実行単位として確認できます。
+        </figcaption>
+      </figure>
     </section>
 
     <section id="background">
@@ -694,7 +754,6 @@ Hermes pod mount:
         人間なら「では実行します」と言ったあとに手を動かしますが、LLMは文章で計画を書いた時点で満足してしまうことがあります。
         今回はこの性質が、連携処理の途中停止につながりました。
       </p>
-
       <h3>2. ローカルファイルをWeb取得しようとする</h3>
       <p>
         <code>/artifacts/templates/research-worker.md</code> のようなローカルファイルを、Hermesが <code>file:///artifacts/...</code> に変換し、
