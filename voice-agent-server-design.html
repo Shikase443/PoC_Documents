@@ -1,0 +1,1066 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VoiceAgent Server 設計書</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fa;
+      --paper: #ffffff;
+      --ink: #17202a;
+      --muted: #5d6875;
+      --line: #d7dde4;
+      --blue: #166aa2;
+      --green: #16815f;
+      --orange: #b87312;
+      --red: #b73535;
+      --soft-blue: #eaf4ff;
+      --soft-green: #eaf8f0;
+      --soft-orange: #fff4e5;
+      --soft-red: #fff0f0;
+      --soft-gray: #eef2f6;
+      --shadow: 0 10px 30px rgba(23, 32, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", Meiryo, system-ui, sans-serif;
+      line-height: 1.72;
+    }
+
+    header {
+      background: linear-gradient(135deg, #17496e, #13725c);
+      color: #ffffff;
+      padding: 48px 24px 40px;
+    }
+
+    header .inner,
+    main {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 5vw, 52px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 880px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 16px;
+    }
+
+    main {
+      padding: 28px 0 64px;
+    }
+
+    section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      margin: 0 0 20px;
+      padding: 24px;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    a {
+      color: var(--blue);
+    }
+
+    code {
+      font-family: Consolas, "SFMono-Regular", monospace;
+      background: #eef1f4;
+      border: 1px solid #d8dde3;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow: auto;
+      background: #101820;
+      color: #eef6ff;
+      border-radius: 8px;
+      padding: 14px;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 4px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft-gray);
+      font-weight: 700;
+    }
+
+    ul {
+      margin-top: 8px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      font-size: 13px;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 0;
+      list-style: none;
+      margin: 0;
+    }
+
+    .toc a {
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      background: #f3f6f9;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px 10px;
+      font-size: 14px;
+    }
+
+    .toc a:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #ffffff;
+    }
+
+    .card h3,
+    .card h4 {
+      margin: 0 0 8px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+    }
+
+    .blue {
+      background: var(--soft-blue);
+      border-color: #c6dff6;
+    }
+
+    .green {
+      background: var(--soft-green);
+      border-color: #c7ead6;
+    }
+
+    .orange {
+      background: var(--soft-orange);
+      border-color: #f0d4a3;
+    }
+
+    .red {
+      background: var(--soft-red);
+      border-color: #efc3c3;
+    }
+
+    .note {
+      border-left: 4px solid var(--blue);
+      background: var(--soft-blue);
+      padding: 12px 14px;
+      border-radius: 6px;
+      color: #1d4d73;
+      margin: 12px 0 0;
+    }
+
+    .warning {
+      border-left: 4px solid var(--orange);
+      background: var(--soft-orange);
+      padding: 12px 14px;
+      border-radius: 6px;
+      color: #6f4b05;
+      margin: 12px 0 0;
+    }
+
+    .diagram {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 12px;
+      margin: 14px 0 4px;
+    }
+
+    svg {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      font-family: "Yu Gothic", Meiryo, system-ui, sans-serif;
+    }
+
+    .svg-title {
+      font-size: 17px;
+      font-weight: 700;
+      fill: var(--ink);
+    }
+
+    .svg-text {
+      font-size: 13px;
+      fill: var(--ink);
+    }
+
+    .svg-small {
+      font-size: 11px;
+      fill: var(--muted);
+    }
+
+    .text-light {
+      fill: #ffffff;
+    }
+
+    .box {
+      fill: #ffffff;
+      stroke: #9eb0bf;
+      stroke-width: 1.3;
+    }
+
+    .box-blue {
+      fill: #eaf4ff;
+      stroke: #6aa9d9;
+      stroke-width: 1.3;
+    }
+
+    .box-green {
+      fill: #eaf8f0;
+      stroke: #5eb985;
+      stroke-width: 1.3;
+    }
+
+    .box-orange {
+      fill: #fff4e5;
+      stroke: #d8a851;
+      stroke-width: 1.3;
+    }
+
+    .box-red {
+      fill: #fff0f0;
+      stroke: #df8b8b;
+      stroke-width: 1.3;
+    }
+
+    .box-dark {
+      fill: #21394d;
+      stroke: #21394d;
+      stroke-width: 1.3;
+    }
+
+    .arrow {
+      stroke: #627283;
+      stroke-width: 1.6;
+      fill: none;
+      marker-end: url(#arrow);
+    }
+
+    .arrow-green {
+      stroke: #229866;
+      stroke-width: 1.8;
+      fill: none;
+      marker-end: url(#arrowGreen);
+    }
+
+    @media (max-width: 760px) {
+      section {
+        padding: 18px;
+      }
+
+      .grid.two,
+      .grid.three,
+      .toc {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        font-size: 14px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      header {
+        background: #ffffff;
+        color: #000000;
+        padding: 24px 0;
+      }
+
+      header p,
+      .pill {
+        color: #000000;
+      }
+
+      section {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="inner">
+      <h1>VoiceAgent Server 設計書</h1>
+      <p>FastAPI ベースの VoiceAgent サーバーについて、Android / Web クライアントの中継、OpenClaw、Whisper、TTS、ドライブDJ、楽曲配信、認証、キャッシュを図解で整理した設計書です。</p>
+      <div class="meta">
+        <span class="pill">最終更新: 2026-05-27</span>
+        <span class="pill">対象: voiceagent</span>
+        <span class="pill">Framework: FastAPI</span>
+        <span class="pill">Runtime: Python 3.12</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="toc">
+      <h2>目次</h2>
+      <ul class="toc">
+        <li><a href="#overview">1. 全体像</a></li>
+        <li><a href="#components">2. 主要コンポーネント</a></li>
+        <li><a href="#auth">3. 認証</a></li>
+        <li><a href="#api">4. APIエンドポイント</a></li>
+        <li><a href="#chat">5. 会話ストリーム</a></li>
+        <li><a href="#speech">6. 音声認識とTTS</a></li>
+        <li><a href="#drive-dj">7. ドライブDJ</a></li>
+        <li><a href="#music">8. 楽曲配信</a></li>
+        <li><a href="#frontend">9. Web UI / PWA</a></li>
+        <li><a href="#config">10. 設定</a></li>
+        <li><a href="#runtime">11. 実行環境</a></li>
+        <li><a href="#risks">12. 注意点</a></li>
+      </ul>
+    </section>
+
+    <section id="overview">
+      <h2>1. 全体像</h2>
+      <p>VoiceAgent サーバーは、クライアントと外部AI / 音声 / 楽曲サービスの間に置かれる中継サーバーです。CORS、認証、セッション、音声整形、楽曲ライブラリ、ドライブDJ用の地域情報をサーバー側で統合します。</p>
+
+      <div class="diagram" aria-label="全体アーキテクチャ">
+        <svg viewBox="0 0 1080 470" role="img">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+            <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#229866"></path>
+            </marker>
+          </defs>
+
+          <text x="20" y="30" class="svg-title">VoiceAgent サーバー全体構成</text>
+
+          <rect x="45" y="70" width="170" height="88" rx="8" class="box-blue"></rect>
+          <text x="130" y="104" text-anchor="middle" class="svg-text">Androidアプリ</text>
+          <text x="130" y="128" text-anchor="middle" class="svg-small">/api/native</text>
+
+          <rect x="45" y="210" width="170" height="88" rx="8" class="box-blue"></rect>
+          <text x="130" y="244" text-anchor="middle" class="svg-text">Web UI / PWA</text>
+          <text x="130" y="268" text-anchor="middle" class="svg-small">/api + 静的ファイル</text>
+
+          <rect x="310" y="115" width="230" height="135" rx="8" class="box-green"></rect>
+          <text x="425" y="150" text-anchor="middle" class="svg-text">FastAPI app.py</text>
+          <text x="425" y="174" text-anchor="middle" class="svg-small">認証 / ルーティング</text>
+          <text x="425" y="194" text-anchor="middle" class="svg-small">SSE中継 / 音声中継</text>
+          <text x="425" y="214" text-anchor="middle" class="svg-small">音楽 / DJ情報</text>
+
+          <rect x="630" y="45" width="180" height="72" rx="8" class="box-orange"></rect>
+          <text x="720" y="75" text-anchor="middle" class="svg-text">OpenClaw</text>
+          <text x="720" y="96" text-anchor="middle" class="svg-small">chat completions</text>
+
+          <rect x="630" y="145" width="180" height="72" rx="8" class="box-orange"></rect>
+          <text x="720" y="175" text-anchor="middle" class="svg-text">Whisper</text>
+          <text x="720" y="196" text-anchor="middle" class="svg-small">transcriptions</text>
+
+          <rect x="630" y="245" width="180" height="72" rx="8" class="box-orange"></rect>
+          <text x="720" y="275" text-anchor="middle" class="svg-text">TTS</text>
+          <text x="720" y="296" text-anchor="middle" class="svg-small">audio speech</text>
+
+          <rect x="630" y="345" width="180" height="72" rx="8" class="box-orange"></rect>
+          <text x="720" y="375" text-anchor="middle" class="svg-text">DJ情報源</text>
+          <text x="720" y="396" text-anchor="middle" class="svg-small">位置 / 天気 / 名所</text>
+
+          <rect x="875" y="160" width="165" height="90" rx="8" class="box"></rect>
+          <text x="958" y="194" text-anchor="middle" class="svg-text">設定ファイル</text>
+          <text x="958" y="218" text-anchor="middle" class="svg-small">prompts / volume</text>
+
+          <rect x="875" y="300" width="165" height="90" rx="8" class="box"></rect>
+          <text x="958" y="334" text-anchor="middle" class="svg-text">音楽ライブラリ</text>
+          <text x="958" y="358" text-anchor="middle" class="svg-small">read only mount</text>
+
+          <path d="M215 114 H310" class="arrow"></path>
+          <path d="M215 254 H310" class="arrow"></path>
+          <path d="M540 150 C570 95,595 82,630 82" class="arrow-green"></path>
+          <path d="M540 180 H630" class="arrow-green"></path>
+          <path d="M540 210 C575 255,595 282,630 282" class="arrow-green"></path>
+          <path d="M540 235 C590 330,602 382,630 382" class="arrow-green"></path>
+          <path d="M540 165 C675 115,780 155,875 190" class="arrow"></path>
+          <path d="M540 225 C670 285,760 325,875 345" class="arrow"></path>
+        </svg>
+      </div>
+
+      <div class="grid three">
+        <div class="card blue">
+          <h3>クライアント中継</h3>
+          <p>Web UI と Android ネイティブAPIを同一アプリで提供し、認証方式をルートごとに切り替えます。</p>
+        </div>
+        <div class="card green">
+          <h3>AI / 音声中継</h3>
+          <p>Whisper、OpenClaw、TTS へのリクエストをサーバー側で組み立て、結果をクライアントへ返します。</p>
+        </div>
+        <div class="card orange">
+          <h3>DJ / 音楽管理</h3>
+          <p>地域情報、天気、名所、楽曲一覧、音量補正をまとめてドライブDJへ提供します。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="components">
+      <h2>2. 主要コンポーネント</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ファイル / ディレクトリ</th>
+            <th>役割</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>app.py</code></td>
+            <td>FastAPI本体。認証、API、ストリーム中継、音声、楽曲、DJ地域情報を担当。</td>
+          </tr>
+          <tr>
+            <td><code>index.html</code>, <code>src/main.js</code>, <code>styles.css</code></td>
+            <td>Web版 VoiceAgent UI。ブラウザ録音、会話、TTS再生、DJモードを提供。</td>
+          </tr>
+          <tr>
+            <td><code>sw.js</code>, <code>manifest.webmanifest</code>, <code>icons/</code></td>
+            <td>PWA用の Service Worker、マニフェスト、アイコン。</td>
+          </tr>
+          <tr>
+            <td><code>settings/prompts/</code></td>
+            <td>チャット文脈、ドライブDJ用プロンプトテンプレート。</td>
+          </tr>
+          <tr>
+            <td><code>settings/music-volume.json</code></td>
+            <td>楽曲ごとの音量補正値を保存するJSON。</td>
+          </tr>
+          <tr>
+            <td><code>settings/landmarks/</code></td>
+            <td>地域名から名所紹介文を引くためのランドマークデータセット。</td>
+          </tr>
+          <tr>
+            <td><code>jma-weather/</code></td>
+            <td>地域名から天気情報を取得する補助スクリプト。</td>
+          </tr>
+          <tr>
+            <td><code>Dockerfile</code>, <code>docker-compose.yaml</code>, <code>entrypoint.sh</code></td>
+            <td>コンテナ実行、環境変数注入、音楽マウント待機、Uvicorn起動。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="auth">
+      <h2>3. 認証</h2>
+      <p>Web UI とネイティブAPIで認証方式が分かれます。静的Web UIと通常 <code>/api/</code> ルートは Basic 認証、<code>/api/native/</code> ルートはネイティブAPIキー認証を使います。</p>
+
+      <div class="diagram" aria-label="認証分岐図">
+        <svg viewBox="0 0 980 300" role="img">
+          <defs>
+            <marker id="arrowAuth" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="30" class="svg-title">認証ルート分岐</text>
+
+          <rect x="55" y="110" width="160" height="70" rx="8" class="box-blue"></rect>
+          <text x="135" y="140" text-anchor="middle" class="svg-text">HTTP Request</text>
+          <text x="135" y="160" text-anchor="middle" class="svg-small">pathで判定</text>
+
+          <rect x="315" y="60" width="200" height="75" rx="8" class="box-green"></rect>
+          <text x="415" y="92" text-anchor="middle" class="svg-text">/api/native/*</text>
+          <text x="415" y="114" text-anchor="middle" class="svg-small">Native API Key</text>
+
+          <rect x="315" y="180" width="200" height="75" rx="8" class="box-orange"></rect>
+          <text x="415" y="212" text-anchor="middle" class="svg-text">/api/* と 静的配信</text>
+          <text x="415" y="234" text-anchor="middle" class="svg-small">Basic Auth</text>
+
+          <rect x="625" y="60" width="260" height="75" rx="8" class="box"></rect>
+          <text x="755" y="92" text-anchor="middle" class="svg-text">Authorization / X-VoiceAgent-Key</text>
+          <text x="755" y="114" text-anchor="middle" class="svg-small">APIキー照合</text>
+
+          <rect x="625" y="180" width="260" height="75" rx="8" class="box"></rect>
+          <text x="755" y="212" text-anchor="middle" class="svg-text">Basic username/password</text>
+          <text x="755" y="234" text-anchor="middle" class="svg-small">未設定なら無効</text>
+
+          <path d="M215 145 C255 95,275 98,315 98" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowAuth)"></path>
+          <path d="M215 145 C255 215,275 218,315 218" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowAuth)"></path>
+          <path d="M515 98 H625" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowAuth)"></path>
+          <path d="M515 218 H625" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowAuth)"></path>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>対象</th>
+            <th>認証方式</th>
+            <th>設定</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Web UI / <code>/api/*</code></td>
+            <td>Basic認証。ユーザー名とパスワードが両方空なら無効。</td>
+            <td><code>BASIC_AUTH_USER</code>, <code>BASIC_AUTH_PASSWORD</code></td>
+          </tr>
+          <tr>
+            <td><code>/api/native/*</code></td>
+            <td>ネイティブAPIキー。<code>Authorization</code>, <code>X-VoiceAgent-Key</code>, <code>X-API-Key</code> を受け付ける。</td>
+            <td><code>VOICEAGENT_NATIVE_API_KEY</code></td>
+          </tr>
+          <tr>
+            <td>上流API</td>
+            <td><code>none</code>, <code>raw</code>, <code>bearer</code>, <code>x-api-key</code> に対応。</td>
+            <td><code>*_AUTH_MODE</code>, <code>*_API_KEY</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="api">
+      <h2>4. APIエンドポイント</h2>
+      <p>ほとんどのAPIは Web向け <code>/api/...</code> と Android向け <code>/api/native/...</code> の両方を持ちます。機能は基本的に同じで、認証方式だけが異なります。</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>メソッド</th>
+            <th>パス</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/config</code>, <code>/api/native/config</code></td><td>機能有効状態、既定ユーザー、DJ既定地域を返す。</td></tr>
+          <tr><td>POST</td><td><code>/api/transcribe</code>, <code>/api/native/transcribe</code></td><td>音声ファイルをWhisperへ中継し、文字起こし結果を返す。</td></tr>
+          <tr><td>POST</td><td><code>/api/chat/stream</code>, <code>/api/native/chat/stream</code></td><td>OpenClawへストリーミングチャットを中継する。</td></tr>
+          <tr><td>POST</td><td><code>/api/drive-dj/stream</code>, <code>/api/native/drive-dj/stream</code></td><td>DJ紹介文生成用のLLMストリームを中継する。</td></tr>
+          <tr><td>POST</td><td><code>/api/speech</code>, <code>/api/native/speech</code></td><td>TTSへ中継し、音声バイナリを返す。</td></tr>
+          <tr><td>POST</td><td><code>/api/compact</code>, <code>/api/native/compact</code></td><td>OpenClawセッションのコンパクト化を要求する。</td></tr>
+          <tr><td>GET</td><td><code>/api/drive-dj/location</code>, <code>/api/native/drive-dj/location</code></td><td>DJ用の地域、天気、名所情報を返す。</td></tr>
+          <tr><td>GET</td><td><code>/api/music/playlist</code>, <code>/api/native/music/playlist</code></td><td>楽曲一覧を返す。必要に応じて再スキャンする。</td></tr>
+          <tr><td>GET / HEAD</td><td><code>/api/music/tracks/{track_id}</code>, <code>/api/native/music/tracks/{track_id}</code></td><td>楽曲ファイルを配信する。</td></tr>
+          <tr><td>GET</td><td><code>/api/music/volume-overrides</code>, <code>/api/native/music/volume-overrides</code></td><td>楽曲ごとの音量補正値を返す。</td></tr>
+          <tr><td>POST</td><td><code>/api/music/volume-overrides</code>, <code>/api/native/music/volume-overrides</code></td><td>楽曲ごとの音量補正値を保存する。</td></tr>
+          <tr><td>POST</td><td><code>/api/client-log</code>, <code>/api/native/client-log</code></td><td>クライアントイベントログをサーバーログに記録する。</td></tr>
+          <tr><td>GET / HEAD</td><td><code>/</code>, <code>/{path}</code></td><td>Web UI静的ファイルを返す。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="chat">
+      <h2>5. 会話ストリーム</h2>
+      <p>通常会話はクライアントから受け取ったメッセージに地域コンテキストを追加し、OpenClawのChat Completions互換APIへ <code>stream: true</code> で中継します。</p>
+
+      <div class="diagram" aria-label="会話ストリーム図">
+        <svg viewBox="0 0 1080 520" role="img">
+          <defs>
+            <marker id="arrowChat" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="30" class="svg-title">OpenClaw ストリーム中継</text>
+
+          <g class="svg-small">
+            <text x="95" y="64" text-anchor="middle">Client</text>
+            <text x="290" y="64" text-anchor="middle">FastAPI</text>
+            <text x="500" y="64" text-anchor="middle">Context</text>
+            <text x="710" y="64" text-anchor="middle">OpenClaw</text>
+            <text x="930" y="64" text-anchor="middle">Response</text>
+          </g>
+
+          <g stroke="#d7dde4" stroke-width="1">
+            <line x1="95" y1="80" x2="95" y2="485"></line>
+            <line x1="290" y1="80" x2="290" y2="485"></line>
+            <line x1="500" y1="80" x2="500" y2="485"></line>
+            <line x1="710" y1="80" x2="710" y2="485"></line>
+            <line x1="930" y1="80" x2="930" y2="485"></line>
+          </g>
+
+          <g stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowChat)">
+            <path d="M95 110 H290"></path>
+            <path d="M290 155 H500"></path>
+            <path d="M500 200 H290"></path>
+            <path d="M290 245 H710"></path>
+            <path d="M710 290 H290"></path>
+            <path d="M290 335 H930"></path>
+            <path d="M710 380 H290"></path>
+            <path d="M290 425 H930"></path>
+          </g>
+
+          <g class="svg-text">
+            <text x="110" y="104">POST chat/stream</text>
+            <text x="305" y="149">DJ地域情報を取得</text>
+            <text x="315" y="194">system context 注入</text>
+            <text x="305" y="239">OpenClawへ stream:true</text>
+            <text x="520" y="284">SSE chunk</text>
+            <text x="305" y="329">そのままクライアントへ転送</text>
+            <text x="520" y="374">完了 / エラー</text>
+            <text x="305" y="419">keep-alive または error payload</text>
+          </g>
+
+          <rect x="230" y="460" width="620" height="38" rx="8" class="box-orange"></rect>
+          <text x="540" y="484" text-anchor="middle" class="svg-text">OpenClaw本体へのストリームHTTPタイムアウトは無制限。無通信時は15秒ごとにkeep-alive。</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>項目</th>
+            <th>仕様</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>上流OpenClaw通信</td><td><code>httpx.AsyncClient(timeout=None)</code></td></tr>
+          <tr><td>クライアントへの形式</td><td><code>text/event-stream</code></td></tr>
+          <tr><td>keep-alive</td><td>15秒ごと</td></tr>
+          <tr><td>セッション</td><td><code>user</code> と <code>_meta.sessionKey</code> を上流へ渡す。</td></tr>
+          <tr><td>セッションリセット</td><td><code>resetSession</code> が真なら <code>_meta.resetSession</code> を付加。</td></tr>
+          <tr><td>コンパクトAPI</td><td>上流へ最大180秒でPOST。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="speech">
+      <h2>6. 音声認識とTTS</h2>
+      <div class="grid two">
+        <div class="card blue">
+          <h3>Whisper中継</h3>
+          <p>アップロードされた音声ファイルをそのまま上流の文字起こしAPIへ <code>multipart/form-data</code> で送信します。</p>
+          <table>
+            <tbody>
+              <tr><th>入力</th><td><code>UploadFile</code></td></tr>
+              <tr><th>上流タイムアウト</th><td>120秒</td></tr>
+              <tr><th>言語</th><td>既定は日本語。環境変数で変更可能。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card green">
+          <h3>TTS中継</h3>
+          <p>読み上げ前にテキストをサニタイズし、TTS APIへ送信します。音声以外のレスポンスはエラーとして扱います。</p>
+          <table>
+            <tbody>
+              <tr><th>入力</th><td><code>{"text": "..."}</code></td></tr>
+              <tr><th>上流タイムアウト</th><td>120秒</td></tr>
+              <tr><th>出力</th><td>音声バイナリ</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>TTSサニタイズ</h3>
+      <p>TTSへ渡す前に、URL、メールアドレス、長い英数字トークン、Markdownリンク、コードフェンス、括弧内の演出指示などを除去または読点相当へ置換します。空文字になった場合は400エラーを返します。</p>
+    </section>
+
+    <section id="drive-dj">
+      <h2>7. ドライブDJ</h2>
+      <p>ドライブDJでは、地域情報、天気、ランドマーク、楽曲リストを組み合わせて紹介文を作ります。Androidアプリ側では3曲1セットの紹介と連続再生に使われます。</p>
+
+      <div class="diagram" aria-label="ドライブDJ情報取得図">
+        <svg viewBox="0 0 1080 430" role="img">
+          <defs>
+            <marker id="arrowDj" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="30" class="svg-title">ドライブDJ情報生成</text>
+
+          <rect x="50" y="85" width="175" height="80" rx="8" class="box-blue"></rect>
+          <text x="138" y="117" text-anchor="middle" class="svg-text">drive-dj/location</text>
+          <text x="138" y="140" text-anchor="middle" class="svg-small">クライアントから要求</text>
+
+          <rect x="325" y="55" width="175" height="75" rx="8" class="box-orange"></rect>
+          <text x="413" y="86" text-anchor="middle" class="svg-text">位置検索</text>
+          <text x="413" y="108" text-anchor="middle" class="svg-small">任意の検索API</text>
+
+          <rect x="325" y="165" width="175" height="75" rx="8" class="box-green"></rect>
+          <text x="413" y="196" text-anchor="middle" class="svg-text">天気取得</text>
+          <text x="413" y="218" text-anchor="middle" class="svg-small">JMA補助スクリプト</text>
+
+          <rect x="325" y="275" width="175" height="75" rx="8" class="box-green"></rect>
+          <text x="413" y="306" text-anchor="middle" class="svg-text">ランドマーク</text>
+          <text x="413" y="328" text-anchor="middle" class="svg-small">JSON dataset</text>
+
+          <rect x="620" y="125" width="190" height="125" rx="8" class="box-blue"></rect>
+          <text x="715" y="160" text-anchor="middle" class="svg-text">Location Payload</text>
+          <text x="715" y="185" text-anchor="middle" class="svg-small">locationHint</text>
+          <text x="715" y="205" text-anchor="middle" class="svg-small">weather</text>
+          <text x="715" y="225" text-anchor="middle" class="svg-small">landmarkInfo</text>
+
+          <rect x="885" y="125" width="150" height="125" rx="8" class="box-orange"></rect>
+          <text x="960" y="160" text-anchor="middle" class="svg-text">drive-dj/stream</text>
+          <text x="960" y="185" text-anchor="middle" class="svg-small">DJ用LLM</text>
+          <text x="960" y="205" text-anchor="middle" class="svg-small">またはOpenClaw</text>
+
+          <path d="M225 125 C270 95,290 92,325 92" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowDj)"></path>
+          <path d="M225 125 C270 190,290 202,325 202" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowDj)"></path>
+          <path d="M225 125 C270 275,290 312,325 312" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowDj)"></path>
+          <path d="M500 92 C570 115,585 140,620 160" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowDj)"></path>
+          <path d="M500 202 H620" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowDj)"></path>
+          <path d="M500 312 C570 285,585 240,620 225" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowDj)"></path>
+          <path d="M810 188 H885" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowDj)"></path>
+
+          <rect x="230" y="375" width="620" height="38" rx="8" class="box-dark"></rect>
+          <text x="540" y="399" text-anchor="middle" class="svg-text text-light">位置検索が使えない場合は既定地域へフォールバック</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>要素</th>
+            <th>仕様</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>位置情報</td><td>任意の検索APIを使用。未設定、失敗、結果なしの場合は既定地域。</td></tr>
+          <tr><td>天気</td><td>補助スクリプトをサブプロセスで実行。既定タイムアウトは8秒。</td></tr>
+          <tr><td>天気キャッシュ</td><td>既定で1800秒。</td></tr>
+          <tr><td>ランドマーク</td><td>JSONデータセットを読み込み、地域名の正規化キーで検索。</td></tr>
+          <tr><td>DJ用LLM</td><td>専用URLがあれば使用。未設定ならOpenClawへフォールバック。</td></tr>
+          <tr><td>プロンプト</td><td><code>settings/prompts/</code> のテンプレートを使用。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="music">
+      <h2>8. 楽曲配信</h2>
+      <p>音楽ライブラリは読み取り専用マウントを前提に、サーバーが対応拡張子を再帰スキャンしてプレイリストを作成します。タグが読める場合はアーティスト、アルバム、タイトルを利用します。</p>
+
+      <div class="diagram" aria-label="音楽ライブラリ図">
+        <svg viewBox="0 0 980 350" role="img">
+          <defs>
+            <marker id="arrowMusic" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="30" class="svg-title">音楽ライブラリとキャッシュ</text>
+
+          <rect x="55" y="100" width="170" height="90" rx="8" class="box-blue"></rect>
+          <text x="140" y="133" text-anchor="middle" class="svg-text">Music Library</text>
+          <text x="140" y="157" text-anchor="middle" class="svg-small">read only</text>
+
+          <rect x="305" y="100" width="170" height="90" rx="8" class="box-green"></rect>
+          <text x="390" y="133" text-anchor="middle" class="svg-text">scan_music_library</text>
+          <text x="390" y="157" text-anchor="middle" class="svg-small">tags / digest id</text>
+
+          <rect x="555" y="55" width="170" height="80" rx="8" class="box-orange"></rect>
+          <text x="640" y="88" text-anchor="middle" class="svg-text">Memory Cache</text>
+          <text x="640" y="111" text-anchor="middle" class="svg-small">MUSIC_CACHE</text>
+
+          <rect x="555" y="170" width="170" height="80" rx="8" class="box-orange"></rect>
+          <text x="640" y="203" text-anchor="middle" class="svg-text">Playlist JSON</text>
+          <text x="640" y="226" text-anchor="middle" class="svg-small">settings cache</text>
+
+          <rect x="800" y="100" width="140" height="90" rx="8" class="box-blue"></rect>
+          <text x="870" y="133" text-anchor="middle" class="svg-text">Client</text>
+          <text x="870" y="157" text-anchor="middle" class="svg-small">playlist / track</text>
+
+          <path d="M225 145 H305" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowMusic)"></path>
+          <path d="M475 130 C520 100,530 95,555 95" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowMusic)"></path>
+          <path d="M475 160 C520 205,530 210,555 210" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowMusic)"></path>
+          <path d="M725 95 C760 105,770 120,800 130" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowMusic)"></path>
+          <path d="M725 210 C760 190,770 165,800 155" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowMusic)"></path>
+
+          <rect x="270" y="285" width="440" height="38" rx="8" class="box-dark"></rect>
+          <text x="490" y="309" text-anchor="middle" class="svg-text text-light">通常アクセスでは重い再スキャンを避け、キャッシュを優先</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>項目</th>
+            <th>仕様</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>対応拡張子</td><td><code>.mp3</code>, <code>.m4a</code>, <code>.aac</code>, <code>.wav</code>, <code>.flac</code>, <code>.ogg</code>, <code>.opus</code>, <code>.webm</code></td></tr>
+          <tr><td>曲ID</td><td>ファイル相対パス由来のダイジェスト。</td></tr>
+          <tr><td>タグ読み取り</td><td><code>mutagen</code> でApple Music系タグなどを取得。</td></tr>
+          <tr><td>メモリキャッシュ</td><td>既定600秒。</td></tr>
+          <tr><td>プレイリスト再スキャン</td><td>起動時と定期バックグラウンド更新。既定3600秒。</td></tr>
+          <tr><td>音量補正</td><td>補正値は -18 から +12 に丸め、0は保存しない。</td></tr>
+          <tr><td>楽曲配信</td><td><code>FileResponse</code> で音声MIMEを付けて返す。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="frontend">
+      <h2>9. Web UI / PWA</h2>
+      <p><code>voiceagent</code> にはブラウザ向け UI も含まれます。ブラウザでは録音、テキスト会話、画像添付、音声再生、ドライブDJ、楽曲再生を実装しています。</p>
+
+      <div class="grid two">
+        <div class="card blue">
+          <h3>Web UI</h3>
+          <ul>
+            <li>React UMD + htm によるビルドレス構成</li>
+            <li>ブラウザ録音と音声レベル表示</li>
+            <li>SSEによる会話ストリーム表示</li>
+            <li>TTS再生キュー</li>
+            <li>画像添付とリサイズ</li>
+          </ul>
+        </div>
+        <div class="card green">
+          <h3>PWA</h3>
+          <ul>
+            <li>Web manifest</li>
+            <li>Service Worker</li>
+            <li>アプリアイコン</li>
+            <li>静的アセット配信</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="note">Androidネイティブアプリの主要な利用経路は <code>/api/native</code> だが、Web UI は同じサーバー上で保守用・ブラウザ利用用として動作する。</div>
+    </section>
+
+    <section id="config">
+      <h2>10. 設定</h2>
+      <p>設定は主に環境変数で注入します。以下は設計上の分類であり、具体的なURL、トークン、ホストパスはドキュメントに記載しません。</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>分類</th>
+            <th>主な環境変数</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>アプリ</td>
+            <td><code>APP_TITLE</code></td>
+            <td>UI表示名。</td>
+          </tr>
+          <tr>
+            <td>Web認証</td>
+            <td><code>BASIC_AUTH_USER</code>, <code>BASIC_AUTH_PASSWORD</code></td>
+            <td>Web UI と通常APIのBasic認証。</td>
+          </tr>
+          <tr>
+            <td>ネイティブAPI認証</td>
+            <td><code>VOICEAGENT_NATIVE_API_KEY</code></td>
+            <td>AndroidアプリからのAPIアクセス制御。</td>
+          </tr>
+          <tr>
+            <td>Whisper</td>
+            <td><code>WHISPER_URL</code>, <code>WHISPER_API_KEY</code>, <code>WHISPER_AUTH_MODE</code>, <code>WHISPER_MODEL</code></td>
+            <td>音声文字起こし。</td>
+          </tr>
+          <tr>
+            <td>OpenClaw</td>
+            <td><code>OPENCLAW_URL</code>, <code>OPENCLAW_COMPACT_URL</code>, <code>OPENCLAW_API_KEY</code>, <code>OPENCLAW_MODEL</code></td>
+            <td>通常会話とセッション管理。</td>
+          </tr>
+          <tr>
+            <td>ドライブDJ LLM</td>
+            <td><code>DRIVE_DJ_LLM_URL</code>, <code>DRIVE_DJ_LLM_API_KEY</code>, <code>DRIVE_DJ_LLM_MODEL</code></td>
+            <td>DJ紹介文専用LLM。未設定ならOpenClawへフォールバック。</td>
+          </tr>
+          <tr>
+            <td>位置 / 天気</td>
+            <td><code>DRIVE_DJ_LOCATION_DEFAULT</code>, <code>DRIVE_DJ_LOCATION_ES_URL</code>, <code>DRIVE_DJ_WEATHER_ENABLED</code>, <code>DRIVE_DJ_WEATHER_TIMEOUT</code></td>
+            <td>DJ用地域情報。</td>
+          </tr>
+          <tr>
+            <td>TTS</td>
+            <td><code>TTS_URL</code>, <code>TTS_API_KEY</code>, <code>TTS_MODEL</code>, <code>TTS_VOICE</code>, <code>TTS_RESPONSE_FORMAT</code>, <code>TTS_SPEED</code></td>
+            <td>音声合成。</td>
+          </tr>
+          <tr>
+            <td>音楽</td>
+            <td><code>MUSIC_LIBRARY_PATH</code>, <code>MUSIC_CACHE_SECONDS</code>, <code>MUSIC_PLAYLIST_REFRESH_SECONDS</code>, <code>MUSIC_MOUNT_WAIT_SECONDS</code></td>
+            <td>楽曲ライブラリとキャッシュ制御。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="runtime">
+      <h2>11. 実行環境</h2>
+      <p>コンテナ実行を基本とし、起動時に音楽ライブラリのマウント待機を行ってから Uvicorn で FastAPI を起動します。</p>
+
+      <div class="diagram" aria-label="コンテナ起動図">
+        <svg viewBox="0 0 980 300" role="img">
+          <defs>
+            <marker id="arrowRun" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="30" class="svg-title">コンテナ起動フロー</text>
+
+          <rect x="55" y="105" width="150" height="70" rx="8" class="box-blue"></rect>
+          <text x="130" y="135" text-anchor="middle" class="svg-text">Container</text>
+          <text x="130" y="156" text-anchor="middle" class="svg-small">python runtime</text>
+
+          <rect x="285" y="105" width="175" height="70" rx="8" class="box-orange"></rect>
+          <text x="373" y="135" text-anchor="middle" class="svg-text">entrypoint</text>
+          <text x="373" y="156" text-anchor="middle" class="svg-small">音楽マウント待機</text>
+
+          <rect x="540" y="105" width="175" height="70" rx="8" class="box-green"></rect>
+          <text x="628" y="135" text-anchor="middle" class="svg-text">Uvicorn</text>
+          <text x="628" y="156" text-anchor="middle" class="svg-small">FastAPI起動</text>
+
+          <rect x="795" y="105" width="130" height="70" rx="8" class="box-blue"></rect>
+          <text x="860" y="135" text-anchor="middle" class="svg-text">Port 8080</text>
+          <text x="860" y="156" text-anchor="middle" class="svg-small">HTTP</text>
+
+          <path d="M205 140 H285" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowRun)"></path>
+          <path d="M460 140 H540" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowRun)"></path>
+          <path d="M715 140 H795" stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowRun)"></path>
+        </svg>
+      </div>
+
+      <h3>主要依存</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>依存</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>fastapi</code></td><td>APIサーバー。</td></tr>
+          <tr><td><code>uvicorn[standard]</code></td><td>ASGI実行環境。</td></tr>
+          <tr><td><code>httpx</code></td><td>上流APIへの非同期HTTP通信。</td></tr>
+          <tr><td><code>python-multipart</code></td><td>音声ファイルアップロード。</td></tr>
+          <tr><td><code>mutagen</code></td><td>音楽タグ解析。</td></tr>
+        </tbody>
+      </table>
+
+      <h3>汎用コマンド例</h3>
+      <pre><code># 環境変数を設定したうえで起動
+docker compose up -d --build
+
+# ログ確認
+docker compose logs --tail=100 voiceagent</code></pre>
+    </section>
+
+    <section id="risks">
+      <h2>12. 注意点と改善候補</h2>
+      <div class="grid two">
+        <div class="card orange">
+          <h3>注意点</h3>
+          <ul>
+            <li>OpenClawストリームは上流HTTPタイムアウトなしのため、クライアント側タイムアウトとの整合が重要。</li>
+            <li>Basic認証が未設定だとWeb UI保護は無効になる。</li>
+            <li>ネイティブAPIキー未設定時は <code>/api/native</code> が利用できない。</li>
+            <li>楽曲ライブラリの初回スキャンはファイル数やマウント状況に依存する。</li>
+            <li>TTSサニタイズは安全側に寄せており、読み上げ内容が短くなる場合がある。</li>
+          </ul>
+        </div>
+        <div class="card green">
+          <h3>改善候補</h3>
+          <ul>
+            <li>設定値のヘルスチェックAPI追加。</li>
+            <li>プロンプトテンプレートの管理画面化。</li>
+            <li>楽曲キャッシュとスキャン状況の可視化。</li>
+            <li>上流APIごとのタイムアウト設定を環境変数化。</li>
+            <li>構造化ログとリクエストIDの導入。</li>
+            <li>ネイティブAPIキーのローテーション対応。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="warning">この設計書では、実URL、IPアドレス、ユーザー名、ホスト上の絶対パス、APIキーなどの環境固有情報は記載しません。運用時は環境変数またはデプロイ手順書で管理します。</div>
+    </section>
+  </main>
+</body>
+</html>
