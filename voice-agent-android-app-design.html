@@ -1,0 +1,1003 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NativeAndroidApp 設計書</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --paper: #ffffff;
+      --ink: #17202a;
+      --muted: #5c6670;
+      --line: #d7dde4;
+      --accent: #1877b9;
+      --accent-2: #0e9f6e;
+      --warn: #c77c02;
+      --soft-blue: #eaf4ff;
+      --soft-green: #eaf8f0;
+      --soft-orange: #fff5e6;
+      --soft-gray: #eef1f4;
+      --shadow: 0 10px 30px rgba(23, 32, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", Meiryo, system-ui, sans-serif;
+      line-height: 1.72;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f5f93, #16826a);
+      color: #ffffff;
+      padding: 48px 24px 40px;
+    }
+
+    header .inner,
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 5vw, 52px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 820px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 16px;
+    }
+
+    main {
+      padding: 28px 0 64px;
+    }
+
+    section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      margin: 0 0 20px;
+      padding: 24px;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      letter-spacing: 0;
+      line-height: 1.3;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #ffffff;
+    }
+
+    .card.blue {
+      background: var(--soft-blue);
+      border-color: #c6dff6;
+    }
+
+    .card.green {
+      background: var(--soft-green);
+      border-color: #c7ead6;
+    }
+
+    .card.orange {
+      background: var(--soft-orange);
+      border-color: #f0d4a3;
+    }
+
+    .card h3,
+    .card h4 {
+      margin: 0 0 8px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 4px;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft-gray);
+      font-weight: 700;
+    }
+
+    code {
+      font-family: Consolas, "SFMono-Regular", monospace;
+      background: #eef1f4;
+      border: 1px solid #d8dde3;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow: auto;
+      background: #101820;
+      color: #eef6ff;
+      border-radius: 8px;
+      padding: 14px;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--soft-blue);
+      padding: 12px 14px;
+      border-radius: 6px;
+      color: #1d4d73;
+    }
+
+    .warning {
+      border-left: 4px solid var(--warn);
+      background: var(--soft-orange);
+      padding: 12px 14px;
+      border-radius: 6px;
+      color: #6f4b05;
+    }
+
+    .diagram {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+      padding: 12px;
+      margin: 14px 0 4px;
+    }
+
+    svg {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      font-family: "Yu Gothic", Meiryo, system-ui, sans-serif;
+    }
+
+    .svg-title {
+      font-size: 17px;
+      font-weight: 700;
+      fill: var(--ink);
+    }
+
+    .svg-text {
+      font-size: 13px;
+      fill: var(--ink);
+    }
+
+    .svg-small {
+      font-size: 11px;
+      fill: var(--muted);
+    }
+
+    .box {
+      fill: #ffffff;
+      stroke: #9eb0bf;
+      stroke-width: 1.3;
+    }
+
+    .box-blue {
+      fill: #eaf4ff;
+      stroke: #6aa9d9;
+    }
+
+    .box-green {
+      fill: #eaf8f0;
+      stroke: #5eb985;
+    }
+
+    .box-orange {
+      fill: #fff5e6;
+      stroke: #d8a851;
+    }
+
+    .box-dark {
+      fill: #1f3d54;
+      stroke: #1f3d54;
+    }
+
+    .text-light {
+      fill: #ffffff;
+    }
+
+    .arrow {
+      stroke: #627283;
+      stroke-width: 1.6;
+      fill: none;
+      marker-end: url(#arrow);
+    }
+
+    .arrow-green {
+      stroke: #229866;
+      stroke-width: 1.8;
+      fill: none;
+      marker-end: url(#arrowGreen);
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 0;
+      list-style: none;
+      margin: 0;
+    }
+
+    .toc a {
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      background: #f3f6f9;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px 10px;
+      font-size: 14px;
+    }
+
+    .toc a:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    @media (max-width: 760px) {
+      section {
+        padding: 18px;
+      }
+
+      .grid.two,
+      .grid.three,
+      .toc {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        font-size: 14px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      header {
+        background: #ffffff;
+        color: #000000;
+        padding: 24px 0;
+      }
+
+      header p,
+      .pill {
+        color: #000000;
+      }
+
+      section {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="inner">
+      <h1>NativeAndroidApp 設計書</h1>
+      <p>VoiceAgent サーバーと連携する Android ネイティブアプリの構成、音声会話、ドライブDJモード、API、キャッシュ、運用上の注意を図解で整理した設計書です。</p>
+      <div class="meta">
+        <span class="pill">最終更新: 2026-05-27</span>
+        <span class="pill">対象: NativeAndroidApp</span>
+        <span class="pill">言語: Kotlin</span>
+        <span class="pill">UI: Jetpack Compose</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="toc">
+      <h2>目次</h2>
+      <ul class="toc">
+        <li><a href="#overview">1. 全体像</a></li>
+        <li><a href="#components">2. 主要コンポーネント</a></li>
+        <li><a href="#lifecycle">3. ライフサイクル</a></li>
+        <li><a href="#conversation">4. 音声会話</a></li>
+        <li><a href="#dj">5. ドライブDJモード</a></li>
+        <li><a href="#api">6. API連携</a></li>
+        <li><a href="#audio">7. 録音と再生</a></li>
+        <li><a href="#cache">8. キャッシュ</a></li>
+        <li><a href="#state">9. 状態管理</a></li>
+        <li><a href="#security">10. 権限と注意点</a></li>
+        <li><a href="#build">11. ビルド</a></li>
+        <li><a href="#future">12. 改善候補</a></li>
+      </ul>
+    </section>
+
+    <section id="overview">
+      <h2>1. 全体像</h2>
+      <p>アプリは UI とフォアグラウンドサービスを分離し、録音、通信、再生、DJモードはサービス側で集中的に管理します。外部AIや音声生成へは Android から直接接続せず、VoiceAgent サーバーのネイティブAPIを経由します。</p>
+
+      <div class="diagram" aria-label="全体構成図">
+        <svg viewBox="0 0 980 420" role="img">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+            <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#229866"></path>
+            </marker>
+          </defs>
+          <text x="20" y="28" class="svg-title">アプリ全体アーキテクチャ</text>
+
+          <rect x="35" y="75" width="140" height="70" rx="8" class="box-blue"></rect>
+          <text x="105" y="103" text-anchor="middle" class="svg-text">ユーザー</text>
+          <text x="105" y="124" text-anchor="middle" class="svg-small">タップ / 発話</text>
+
+          <rect x="235" y="50" width="190" height="120" rx="8" class="box-blue"></rect>
+          <text x="330" y="82" text-anchor="middle" class="svg-text">MainActivity</text>
+          <text x="330" y="104" text-anchor="middle" class="svg-small">Compose UI</text>
+          <text x="330" y="124" text-anchor="middle" class="svg-small">設定 / 状態表示</text>
+          <text x="330" y="144" text-anchor="middle" class="svg-small">サービス操作</text>
+
+          <rect x="505" y="45" width="220" height="130" rx="8" class="box-green"></rect>
+          <text x="615" y="78" text-anchor="middle" class="svg-text">VoiceAgentForegroundService</text>
+          <text x="615" y="101" text-anchor="middle" class="svg-small">録音 / 会話 / 再生</text>
+          <text x="615" y="121" text-anchor="middle" class="svg-small">ドライブDJ</text>
+          <text x="615" y="141" text-anchor="middle" class="svg-small">通知 / MediaSession</text>
+
+          <rect x="775" y="60" width="160" height="100" rx="8" class="box-orange"></rect>
+          <text x="855" y="91" text-anchor="middle" class="svg-text">VoiceAgentApiClient</text>
+          <text x="855" y="114" text-anchor="middle" class="svg-small">HTTP / SSE</text>
+          <text x="855" y="134" text-anchor="middle" class="svg-small">timeout 300秒</text>
+
+          <rect x="250" y="245" width="150" height="72" rx="8" class="box"></rect>
+          <text x="325" y="274" text-anchor="middle" class="svg-text">VoiceRecorder</text>
+          <text x="325" y="296" text-anchor="middle" class="svg-small">MediaRecorder</text>
+
+          <rect x="445" y="245" width="150" height="72" rx="8" class="box"></rect>
+          <text x="520" y="274" text-anchor="middle" class="svg-text">VoicePlayer</text>
+          <text x="520" y="296" text-anchor="middle" class="svg-small">MediaPlayer</text>
+
+          <rect x="640" y="245" width="150" height="72" rx="8" class="box"></rect>
+          <text x="715" y="274" text-anchor="middle" class="svg-text">Cache</text>
+          <text x="715" y="296" text-anchor="middle" class="svg-small">音声 / 楽曲</text>
+
+          <rect x="805" y="245" width="130" height="72" rx="8" class="box"></rect>
+          <text x="870" y="274" text-anchor="middle" class="svg-text">Notification</text>
+          <text x="870" y="296" text-anchor="middle" class="svg-small">Talk / Stop / DJ</text>
+
+          <rect x="275" y="355" width="580" height="45" rx="8" class="box-dark"></rect>
+          <text x="565" y="383" text-anchor="middle" class="svg-text text-light">voiceagent API → Whisper / OpenClaw / TTS / Music</text>
+
+          <path d="M175 110 H235" class="arrow"></path>
+          <path d="M425 110 H505" class="arrow"></path>
+          <path d="M725 110 H775" class="arrow"></path>
+          <path d="M615 175 C600 220,365 210,325 245" class="arrow"></path>
+          <path d="M615 175 C605 215,545 215,520 245" class="arrow"></path>
+          <path d="M615 175 C630 215,700 220,715 245" class="arrow"></path>
+          <path d="M615 175 C665 220,830 215,870 245" class="arrow"></path>
+          <path d="M855 160 V355" class="arrow-green"></path>
+          <path d="M805 378 H855" class="arrow-green"></path>
+          <path d="M775 132 C705 205,625 255,565 355" class="arrow-green"></path>
+        </svg>
+      </div>
+
+      <div class="grid three">
+        <div class="card blue">
+          <h3>UI</h3>
+          <p>ユーザー操作、設定保存、状態表示、チャット履歴、画像添付を担当します。</p>
+        </div>
+        <div class="card green">
+          <h3>サービス</h3>
+          <p>録音、OpenClaw待機、TTS再生、DJモード、通知、WakeLockを担当します。</p>
+        </div>
+        <div class="card orange">
+          <h3>サーバー連携</h3>
+          <p>Whisper、OpenClaw、TTS、楽曲配信は VoiceAgent API 経由で利用します。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="components">
+      <h2>2. 主要コンポーネント</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ファイル</th>
+            <th>責務</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>MainActivity.kt</code></td>
+            <td>Compose UI、権限要求、設定保存、サービス操作、ブロードキャスト受信。</td>
+          </tr>
+          <tr>
+            <td><code>VoiceAgentForegroundService.kt</code></td>
+            <td>録音、音声会話、TTS、DJモード、通知、状態配信の中核。</td>
+          </tr>
+          <tr>
+            <td><code>VoiceAgentApiClient.kt</code></td>
+            <td>VoiceAgent API との HTTP 通信、SSE応答の解析。</td>
+          </tr>
+          <tr>
+            <td><code>VoiceRecorder.kt</code></td>
+            <td>MediaRecorder による M4A/AAC 録音、Bluetoothマイク経路制御。</td>
+          </tr>
+          <tr>
+            <td><code>VoicePlayer.kt</code></td>
+            <td>MediaPlayer による TTS / 楽曲再生、唯ちゃん音声の音量底上げ。</td>
+          </tr>
+          <tr>
+            <td><code>SpeechEnvelope.kt</code></td>
+            <td>TTS音声の波形解析と口パク表示用レベル算出。</td>
+          </tr>
+          <tr>
+            <td><code>VoiceAgentSettings.kt</code></td>
+            <td>デフォルトURL、SharedPreferencesキー、セッションキー生成。</td>
+          </tr>
+          <tr>
+            <td><code>HeadsetButtonReceiver.kt</code></td>
+            <td>メディアボタン入力をサービスへ転送。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="lifecycle">
+      <h2>3. ライフサイクル</h2>
+      <div class="diagram" aria-label="ライフサイクル図">
+        <svg viewBox="0 0 980 260" role="img">
+          <defs>
+            <marker id="arrowLife" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="28" class="svg-title">アプリとサービスのライフサイクル</text>
+          <g stroke="#627283" stroke-width="1.6" fill="none" marker-end="url(#arrowLife)">
+            <path d="M155 115 H270"></path>
+            <path d="M420 115 H535"></path>
+            <path d="M685 115 H800"></path>
+            <path d="M865 150 C820 215,155 215,105 150"></path>
+          </g>
+          <rect x="35" y="80" width="120" height="70" rx="8" class="box-blue"></rect>
+          <text x="95" y="109" text-anchor="middle" class="svg-text">起動</text>
+          <text x="95" y="130" text-anchor="middle" class="svg-small">MainActivity</text>
+          <rect x="270" y="80" width="150" height="70" rx="8" class="box-blue"></rect>
+          <text x="345" y="109" text-anchor="middle" class="svg-text">権限確認</text>
+          <text x="345" y="130" text-anchor="middle" class="svg-small">録音 / 通知など</text>
+          <rect x="535" y="80" width="150" height="70" rx="8" class="box-green"></rect>
+          <text x="610" y="109" text-anchor="middle" class="svg-text">サービス開始</text>
+          <text x="610" y="130" text-anchor="middle" class="svg-small">Foreground</text>
+          <rect x="800" y="80" width="130" height="70" rx="8" class="box-orange"></rect>
+          <text x="865" y="109" text-anchor="middle" class="svg-text">操作待ち</text>
+          <text x="865" y="130" text-anchor="middle" class="svg-small">Talk / DJ</text>
+          <rect x="360" y="190" width="260" height="45" rx="8" class="box"></rect>
+          <text x="490" y="219" text-anchor="middle" class="svg-text">アプリ終了時はサービス停止</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>イベント</th>
+            <th>動作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>アプリ起動</td>
+            <td>権限確認後、<code>ACTION_START_SERVICE</code> でサービスを起動。</td>
+          </tr>
+          <tr>
+            <td>サービス起動</td>
+            <td>通知チャンネル、MediaSession、音声経路監視を初期化。</td>
+          </tr>
+          <tr>
+            <td>アプリ終了</td>
+            <td><code>isFinishing</code> の場合にサービスを停止。</td>
+          </tr>
+          <tr>
+            <td>タスク削除</td>
+            <td>再生を止め、<code>stopSelf()</code> でサービスを終了。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="conversation">
+      <h2>4. 音声会話</h2>
+      <p>録音前に通信確認を行い、通信できない場合は録音へ進みません。録音結果は Whisper へ送信し、テキスト化後に OpenClaw のストリーム応答を受け取り、文単位のチャンクで TTS 再生します。</p>
+
+      <div class="diagram" aria-label="音声会話シーケンス図">
+        <svg viewBox="0 0 980 540" role="img">
+          <defs>
+            <marker id="arrowSeq" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="28" class="svg-title">音声会話フロー</text>
+
+          <g class="svg-small">
+            <text x="95" y="62" text-anchor="middle">UI</text>
+            <text x="275" y="62" text-anchor="middle">Service</text>
+            <text x="455" y="62" text-anchor="middle">Recorder</text>
+            <text x="635" y="62" text-anchor="middle">API</text>
+            <text x="815" y="62" text-anchor="middle">Player</text>
+          </g>
+
+          <g stroke="#d7dde4" stroke-width="1">
+            <line x1="95" y1="75" x2="95" y2="510"></line>
+            <line x1="275" y1="75" x2="275" y2="510"></line>
+            <line x1="455" y1="75" x2="455" y2="510"></line>
+            <line x1="635" y1="75" x2="635" y2="510"></line>
+            <line x1="815" y1="75" x2="815" y2="510"></line>
+          </g>
+
+          <g stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowSeq)">
+            <path d="M95 100 H275"></path>
+            <path d="M275 140 H635"></path>
+            <path d="M275 180 H455"></path>
+            <path d="M275 220 H635"></path>
+            <path d="M275 260 H815"></path>
+            <path d="M275 300 H455"></path>
+            <path d="M455 340 H635"></path>
+            <path d="M635 380 H275"></path>
+            <path d="M275 420 H635"></path>
+            <path d="M275 460 H815"></path>
+          </g>
+
+          <g class="svg-text">
+            <text x="112" y="94">録音ボタン</text>
+            <text x="298" y="134">GET config で通信確認</text>
+            <text x="298" y="174">マイク経路ウォームアップ</text>
+            <text x="298" y="214">「ご用件をどうぞ」TTS生成</text>
+            <text x="298" y="254">プロンプト再生</text>
+            <text x="298" y="294">録音開始</text>
+            <text x="472" y="334">POST transcribe</text>
+            <text x="452" y="374">Whisper結果</text>
+            <text x="298" y="414">POST chat/stream</text>
+            <text x="298" y="454">応答チャンクをTTS再生</text>
+          </g>
+
+          <rect x="210" y="485" width="560" height="38" rx="8" class="box-orange"></rect>
+          <text x="490" y="510" text-anchor="middle" class="svg-text">通信不可時は録音せず、固定キャッシュ音声で通知</text>
+        </svg>
+      </div>
+
+      <h3>録音停止条件</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>条件</th>
+            <th>値</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>監視間隔</td><td>120ms</td></tr>
+          <tr><td>最低録音時間</td><td>1.2秒</td></tr>
+          <tr><td>音声あり後の無音停止</td><td>1.6秒</td></tr>
+          <tr><td>音声なし停止</td><td>8秒</td></tr>
+          <tr><td>最大録音時間</td><td>90秒</td></tr>
+          <tr><td>音声判定しきい値</td><td><code>MediaRecorder.maxAmplitude() &gt;= 700</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>音声コマンド</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>発話例</th>
+            <th>動作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>音楽をかけて / 音楽かけて / 音楽を再生して</td><td>ドライブDJモードを開始</td></tr>
+          <tr><td>音楽を停止して / 音楽を止めて / 音楽をとめて</td><td>再生停止</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="dj">
+      <h2>5. ドライブDJモード</h2>
+      <p>ドライブDJモードは、地域紹介と3曲紹介を1セットとして生成し、その後に3曲を連続再生します。地域紹介は1回だけ行い、楽曲紹介はシンプルな定型に寄せます。</p>
+
+      <div class="diagram" aria-label="ドライブDJモード図">
+        <svg viewBox="0 0 980 420" role="img">
+          <defs>
+            <marker id="arrowDj" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="28" class="svg-title">ドライブDJ 1セットの流れ</text>
+          <g stroke="#627283" stroke-width="1.5" fill="none" marker-end="url(#arrowDj)">
+            <path d="M150 95 H245"></path>
+            <path d="M365 95 H460"></path>
+            <path d="M580 95 H675"></path>
+            <path d="M795 95 C865 95,895 145,895 205"></path>
+            <path d="M830 245 H735"></path>
+            <path d="M615 245 H520"></path>
+            <path d="M400 245 H305"></path>
+            <path d="M185 245 C95 245,80 145,95 115"></path>
+          </g>
+
+          <rect x="35" y="60" width="115" height="70" rx="8" class="box-green"></rect>
+          <text x="92" y="90" text-anchor="middle" class="svg-text">開始音声</text>
+          <text x="92" y="111" text-anchor="middle" class="svg-small">固定TTS</text>
+
+          <rect x="245" y="60" width="120" height="70" rx="8" class="box-blue"></rect>
+          <text x="305" y="90" text-anchor="middle" class="svg-text">楽曲一覧</text>
+          <text x="305" y="111" text-anchor="middle" class="svg-small">playlist</text>
+
+          <rect x="460" y="60" width="120" height="70" rx="8" class="box-blue"></rect>
+          <text x="520" y="90" text-anchor="middle" class="svg-text">3曲選択</text>
+          <text x="520" y="111" text-anchor="middle" class="svg-small">直近15曲除外</text>
+
+          <rect x="675" y="60" width="120" height="70" rx="8" class="box-orange"></rect>
+          <text x="735" y="90" text-anchor="middle" class="svg-text">地域情報</text>
+          <text x="735" y="111" text-anchor="middle" class="svg-small">現在日時注入</text>
+
+          <rect x="800" y="205" width="130" height="80" rx="8" class="box-green"></rect>
+          <text x="865" y="235" text-anchor="middle" class="svg-text">紹介文生成</text>
+          <text x="865" y="256" text-anchor="middle" class="svg-small">地域紹介 + 3曲紹介</text>
+
+          <rect x="615" y="210" width="120" height="70" rx="8" class="box-green"></rect>
+          <text x="675" y="240" text-anchor="middle" class="svg-text">TTS再生</text>
+          <text x="675" y="261" text-anchor="middle" class="svg-small">1本の紹介音声</text>
+
+          <rect x="400" y="210" width="120" height="70" rx="8" class="box-blue"></rect>
+          <text x="460" y="240" text-anchor="middle" class="svg-text">3曲DL</text>
+          <text x="460" y="261" text-anchor="middle" class="svg-small">先に取得</text>
+
+          <rect x="185" y="210" width="120" height="70" rx="8" class="box-blue"></rect>
+          <text x="245" y="240" text-anchor="middle" class="svg-text">3曲再生</text>
+          <text x="245" y="261" text-anchor="middle" class="svg-small">曲間4秒</text>
+
+          <rect x="300" y="335" width="380" height="48" rx="8" class="box-dark"></rect>
+          <text x="490" y="365" text-anchor="middle" class="svg-text text-light">地域紹介 → 1曲目は〜、2曲目は〜、3曲目は〜でお送りします。</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>項目</th>
+            <th>仕様</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1セット曲数</td><td>3曲</td></tr>
+          <tr><td>紹介文</td><td>地域紹介1回 + シンプルな3曲紹介</td></tr>
+          <tr><td>同曲回避</td><td>直近15曲を避ける</td></tr>
+          <tr><td>曲間</td><td>約4秒</td></tr>
+          <tr><td>セット間</td><td>約1.5秒</td></tr>
+          <tr><td>開始固定音声</td><td>「ゆいちゃんのお出かけラジオの時間です。」</td></tr>
+          <tr><td>日時</td><td>アプリ側の現在日時を注入。GPSレスポンスの日時は使わない。</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">日時は挨拶や季節感、時間帯判断には使いますが、日時、日付、曜日、時刻そのものは発話しない方針です。</div>
+    </section>
+
+    <section id="api">
+      <h2>6. API連携</h2>
+      <p>Android アプリは設定画面で指定した <code>&lt;VoiceAgent API Base URL&gt;</code> を基点として、VoiceAgent サーバーへ通信します。</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>メソッド</th>
+            <th>パス</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>GET</td><td><code>config</code></td><td>通信確認、設定取得</td></tr>
+          <tr><td>POST</td><td><code>transcribe</code></td><td>録音ファイルをWhisperへ送信</td></tr>
+          <tr><td>POST</td><td><code>chat/stream</code></td><td>通常会話のOpenClawストリーム</td></tr>
+          <tr><td>POST</td><td><code>drive-dj/stream</code></td><td>DJ紹介文生成</td></tr>
+          <tr><td>GET</td><td><code>drive-dj/location</code></td><td>地域情報、天気、ランドマーク取得</td></tr>
+          <tr><td>GET</td><td><code>music/playlist?refresh=true</code></td><td>楽曲一覧取得</td></tr>
+          <tr><td>GET</td><td><code>music/tracks/{id}</code></td><td>楽曲ファイル取得</td></tr>
+          <tr><td>GET</td><td><code>music/volume-overrides</code></td><td>楽曲音量補正取得</td></tr>
+          <tr><td>POST</td><td><code>music/volume-overrides</code></td><td>楽曲音量補正保存</td></tr>
+          <tr><td>POST</td><td><code>speech</code></td><td>TTS音声生成</td></tr>
+        </tbody>
+      </table>
+
+      <h3>タイムアウト</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>区分</th>
+            <th>値</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>接続タイムアウト</td><td>20秒</td></tr>
+          <tr><td>共通読み取りタイムアウト</td><td>300秒</td></tr>
+          <tr><td>楽曲ダウンロード読み取りタイムアウト</td><td>300秒</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="audio">
+      <h2>7. 録音と再生</h2>
+      <div class="grid two">
+        <div class="card blue">
+          <h3>録音</h3>
+          <table>
+            <tbody>
+              <tr><th>方式</th><td><code>MediaRecorder</code></td></tr>
+              <tr><th>形式</th><td>MPEG-4 / AAC</td></tr>
+              <tr><th>サンプリング</th><td>16kHz</td></tr>
+              <tr><th>ビットレート</th><td>128kbps</td></tr>
+              <tr><th>保存先</th><td><code>cacheDir/recordings</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card green">
+          <h3>再生</h3>
+          <table>
+            <tbody>
+              <tr><th>方式</th><td><code>MediaPlayer</code></td></tr>
+              <tr><th>TTS</th><td><code>CONTENT_TYPE_SPEECH</code></td></tr>
+              <tr><th>楽曲</th><td><code>CONTENT_TYPE_MUSIC</code></td></tr>
+              <tr><th>TTS補正</th><td><code>LoudnessEnhancer</code></td></tr>
+              <tr><th>口パク</th><td><code>SpeechEnvelope</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p>Bluetoothマイクが利用できる場合は、通話モードとBluetooth SCO / BLE headsetを試行します。録音前にマイク経路をウォームアップし、「ご用件をどうぞ」の後の録音開始を速くしています。</p>
+    </section>
+
+    <section id="cache">
+      <h2>8. キャッシュ</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>種別</th>
+            <th>保存先</th>
+            <th>目的</th>
+            <th>再起動後</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>固定TTS音声</td>
+            <td><code>filesDir/speech_cache</code></td>
+            <td>通信不可、待機、録音開始などの定型文</td>
+            <td>有効</td>
+          </tr>
+          <tr>
+            <td>生成TTS音声</td>
+            <td><code>cacheDir/speech</code></td>
+            <td>会話応答、DJ紹介文の一時再生</td>
+            <td>OS判断で削除される可能性あり</td>
+          </tr>
+          <tr>
+            <td>楽曲ファイル</td>
+            <td><code>cacheDir/music</code></td>
+            <td>ダウンロード後の再生</td>
+            <td>OS判断で削除される可能性あり</td>
+          </tr>
+          <tr>
+            <td>録音ファイル</td>
+            <td><code>cacheDir/recordings</code></td>
+            <td>Whisper送信用</td>
+            <td>一時ファイル扱い</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="warning">固定TTS音声は初回オンライン生成が必要です。キャッシュがない通信不可状態では、音声通知できずUIステータスのみになります。</div>
+    </section>
+
+    <section id="state">
+      <h2>9. 状態管理</h2>
+      <p>サービスは <code>ACTION_STATUS</code> ブロードキャストでUIへ状態を伝えます。UIはこの状態をもとに、録音中、処理中、DJ中、再生中、現在曲、ログを更新します。</p>
+
+      <div class="diagram" aria-label="状態配信図">
+        <svg viewBox="0 0 980 280" role="img">
+          <defs>
+            <marker id="arrowState" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#627283"></path>
+            </marker>
+          </defs>
+          <text x="20" y="28" class="svg-title">サービス状態の配信</text>
+          <rect x="55" y="85" width="230" height="95" rx="8" class="box-green"></rect>
+          <text x="170" y="120" text-anchor="middle" class="svg-text">VoiceAgentForegroundService</text>
+          <text x="170" y="145" text-anchor="middle" class="svg-small">status / transcript / assistant</text>
+          <text x="170" y="165" text-anchor="middle" class="svg-small">recording / busy / driveDj / music</text>
+
+          <rect x="385" y="85" width="210" height="95" rx="8" class="box-orange"></rect>
+          <text x="490" y="120" text-anchor="middle" class="svg-text">ACTION_STATUS</text>
+          <text x="490" y="145" text-anchor="middle" class="svg-small">package限定 Broadcast</text>
+
+          <rect x="695" y="85" width="230" height="95" rx="8" class="box-blue"></rect>
+          <text x="810" y="120" text-anchor="middle" class="svg-text">MainActivity</text>
+          <text x="810" y="145" text-anchor="middle" class="svg-small">Compose State更新</text>
+          <text x="810" y="165" text-anchor="middle" class="svg-small">画面・ログ・口パク表示</text>
+
+          <path d="M285 132 H385" class="arrow" marker-end="url(#arrowState)"></path>
+          <path d="M595 132 H695" class="arrow" marker-end="url(#arrowState)"></path>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Extra</th>
+            <th>意味</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>EXTRA_STATUS</code></td><td>現在状態</td></tr>
+          <tr><td><code>EXTRA_TRANSCRIPT</code></td><td>ユーザー発話またはDJ曲リスト</td></tr>
+          <tr><td><code>EXTRA_ASSISTANT</code></td><td>アシスタント応答またはDJ紹介文</td></tr>
+          <tr><td><code>EXTRA_RECORDING</code></td><td>録音中フラグ</td></tr>
+          <tr><td><code>EXTRA_BUSY</code></td><td>処理中フラグ</td></tr>
+          <tr><td><code>EXTRA_DRIVE_DJ</code></td><td>DJモード中フラグ</td></tr>
+          <tr><td><code>EXTRA_SPEAKING</code></td><td>音声再生中フラグ</td></tr>
+          <tr><td><code>EXTRA_SPEECH_LEVEL</code></td><td>口パク表示用レベル</td></tr>
+          <tr><td><code>EXTRA_MUSIC_ARTIST / TITLE</code></td><td>再生中楽曲情報</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="security">
+      <h2>10. 権限と注意点</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>権限</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>INTERNET</code></td><td>VoiceAgent API通信</td></tr>
+          <tr><td><code>ACCESS_NETWORK_STATE</code></td><td>通信状態確認</td></tr>
+          <tr><td><code>RECORD_AUDIO</code></td><td>音声録音</td></tr>
+          <tr><td><code>MODIFY_AUDIO_SETTINGS</code></td><td>Bluetoothマイク経路制御</td></tr>
+          <tr><td><code>WAKE_LOCK</code></td><td>録音、会話、再生中のスリープ抑制</td></tr>
+          <tr><td><code>FOREGROUND_SERVICE_MICROPHONE</code></td><td>フォアグラウンド録音</td></tr>
+          <tr><td><code>FOREGROUND_SERVICE_MEDIA_PLAYBACK</code></td><td>フォアグラウンド音楽再生</td></tr>
+          <tr><td><code>POST_NOTIFICATIONS</code></td><td>通知表示</td></tr>
+          <tr><td><code>BLUETOOTH_CONNECT</code></td><td>Bluetoothマイク利用</td></tr>
+        </tbody>
+      </table>
+
+      <div class="warning">
+        APIキーは SharedPreferences に保存されます。暗号化保存ではありません。また、<code>usesCleartextTraffic=true</code> のためHTTP接続も許可されています。
+      </div>
+    </section>
+
+    <section id="build">
+      <h2>11. ビルドと実機インストール</h2>
+      <pre><code># NativeAndroidApp ディレクトリで実行
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat :app:testDebugUnitTest</code></pre>
+
+      <pre><code># adb に PATH が通っている環境で実行
+adb install -r app\build\outputs\apk\debug\app-debug.apk</code></pre>
+    </section>
+
+    <section id="future">
+      <h2>12. 改善候補</h2>
+      <div class="grid two">
+        <div class="card">
+          <h3>保守性</h3>
+          <ul>
+            <li>DJプロンプトの外部ファイル化</li>
+            <li>HTTPクライアントを OkHttp へ移行</li>
+            <li>サービス状態の永続化と復元強化</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>運用性</h3>
+          <ul>
+            <li>通信タイムアウトの設定画面化</li>
+            <li>楽曲キャッシュ容量上限と削除ポリシー</li>
+            <li>固定音声キャッシュの管理画面</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>セキュリティ</h3>
+          <ul>
+            <li>APIキーの暗号化保存</li>
+            <li>HTTP許可の見直し</li>
+            <li>ログに含める情報の整理</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>ユーザー体験</h3>
+          <ul>
+            <li>DJモードのセット数や曲間秒数の設定化</li>
+            <li>通信不可時の状態表示強化</li>
+            <li>Bluetoothマイク状態のUI表示</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
